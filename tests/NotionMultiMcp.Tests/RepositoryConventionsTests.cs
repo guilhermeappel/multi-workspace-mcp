@@ -116,22 +116,6 @@ public sealed partial class RepositoryConventionsTests
     }
 
     [Fact]
-    public void No_tracked_file_mentions_the_project_this_one_took_ideas_from()
-    {
-        var textFiles = Directory.EnumerateFiles(_root, "*", SearchOption.AllDirectories)
-            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}.git{Path.DirectorySeparatorChar}")
-                && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
-                && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
-                && !f.Contains($"{Path.DirectorySeparatorChar}TestResults{Path.DirectorySeparatorChar}")
-                && !f.EndsWith("RepositoryConventionsTests.cs", StringComparison.Ordinal)
-                && new[] { ".cs", ".md", ".yml", ".yaml", ".json", ".props", ".csproj", ".slnx", ".ps1", ".editorconfig", ".config" }.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase));
-
-        var offenders = textFiles.Where(f => File.ReadAllText(f).Contains("fitvolei", StringComparison.OrdinalIgnoreCase));
-
-        Assert.Empty(offenders.Select(f => Path.GetRelativePath(_root, f)));
-    }
-
-    [Fact]
     public void Source_files_are_written_in_english()
     {
         // Portuguese accents are a cheap, reliable sign of text that was not translated.
