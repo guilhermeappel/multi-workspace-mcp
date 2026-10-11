@@ -56,9 +56,9 @@ publishes the tags `1.2.3` and `1.2` and creates a GitHub release. To run a rele
 
 Follow it on the **Actions** tab. In a fork, GitHub may leave Actions disabled until you enable it there. Each run's summary shows the deploy command with the right tag.
 
-A new GHCR package starts out private. The image contains no secrets (they are injected at deploy time), so
-the simplest option is to make it **public**: GitHub → your profile → **Packages** → `multi-workspace-mcp` →
-**Package settings** → **Change visibility**. Azure then pulls it without any credential.
+Check the visibility of the package under GitHub → your profile → **Packages** → `multi-workspace-mcp` →
+**Package settings**. The image contains no secrets (they are injected at deploy time), so the simplest option is
+to make it **public**: Azure then pulls it without any credential. A public package cannot be made private again.
 
 If you prefer to keep it private, Azure needs a credential to pull it. Create a **classic PAT** under
 GitHub → Settings → Developer settings → Personal access tokens → **Tokens (classic)**, tick **only** the
