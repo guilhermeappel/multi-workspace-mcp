@@ -37,7 +37,7 @@ internal static class SigningKeyFormat
     /// <summary>
     /// Catches the common mistake of a passphrase that happens to be valid base64: it decodes to bytes that look random,
     /// but its guessing cost is that of the phrase. 32 random bytes in base64 use about 32 different characters (fewer
-    /// than 20 is about one in 10^8), and text such as a repeated phrase uses far fewer. It is a safety net, not a proof
+    /// than 20 happens for about one random key in 50 million), and text such as a repeated phrase uses far fewer. It is a safety net, not a proof
     /// of randomness: generate the key with `openssl rand -hex 32`. Hex is covered by the byte-level test.
     /// </summary>
     public static bool LooksRandom(string? value)
