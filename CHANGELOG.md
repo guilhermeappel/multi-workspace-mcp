@@ -7,6 +7,8 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-11
+
 ### Added
 
 - `Notion:ReadOnlyWorkspaces`: workspaces in which the tools that create, append or change are refused before Notion is
@@ -23,6 +25,11 @@ All notable changes to this project are recorded here. The format follows
 - `Server:SigningKey` rejects a passphrase that is valid base64; use 32 random bytes (`openssl rand -hex 32`).
 - A JSON-RPC batch is limited to 20 messages.
 - `deploy/azure-setup.ps1` rejects passwords with `%`.
+
+### Changed
+
+- The GitHub Actions used by the CI and the release workflow were updated (checkout 7, metadata-action 6, among
+  others), and the release workflow was checked with a pre-release tag.
 
 ## [0.1.0] - 2026-10-11
 
