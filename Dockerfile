@@ -3,7 +3,8 @@
 # ---------- build ----------
 FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:35d40304542c8689331f8cab17c65926cdf48fe711e289321d71924b230a7d29 AS build
 WORKDIR /src
-COPY global.json nuget.config Directory.Build.props Directory.Packages.props ./
+# .editorconfig carries the analyzer severities; without it the Recommended set fails the build on rules the project turns off.
+COPY global.json nuget.config .editorconfig Directory.Build.props Directory.Packages.props ./
 COPY src/NotionMultiMcp/NotionMultiMcp.csproj src/NotionMultiMcp/
 RUN dotnet restore src/NotionMultiMcp/NotionMultiMcp.csproj
 COPY src/ src/
