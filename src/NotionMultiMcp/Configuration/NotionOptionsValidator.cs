@@ -28,6 +28,14 @@ internal sealed class NotionOptionsValidator : IValidateOptions<NotionOptions>
             }
         }
 
+        foreach (var readOnly in WorkspaceRegistry.ParseNames(options.ReadOnlyWorkspaces))
+        {
+            if (!seen.Contains(readOnly))
+            {
+                failures.Add($"Notion:ReadOnlyWorkspaces names '{readOnly}', which is not a configured workspace. A typo here would leave a workspace writable.");
+            }
+        }
+
         if (options.Workspaces.Count == 0)
         {
             failures.Add("No workspace configured. Set at least one Notion:Workspaces:<name> entry holding an integration token (for example Notion__Workspaces__work).");

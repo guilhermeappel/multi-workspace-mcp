@@ -36,7 +36,10 @@ What you must still do yourself:
 - **Give each Notion integration the smallest capabilities.** Use *Read content* only for a workspace that
   does not need writes, and share only the pages you want Claude to reach.
 - **Mind prompt injection.** A page you let Claude read can contain text that tries to steer Claude, for
-  example into writing to your other workspace. Read-only integrations are the strongest defence.
+  example into writing to your other workspace. Read-only integrations (no write capability in Notion) are the
+  strongest defence. As a second layer, `Notion:ReadOnlyWorkspaces` makes this server refuse every tool that changes
+  something in the workspaces you list. It is enforced by this server, so it does not replace the integration
+  capabilities, and it does not stop a page from being read.
 - **Start the connector yourself.** The password page is the only consent step. Only enter the password for a
   connection you just started from your own Claude account.
 - **Do not share the URL.** Do not expose `Server:AuthDisabled`; it only works when `ASPNETCORE_ENVIRONMENT` is

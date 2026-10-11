@@ -7,6 +7,12 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `Notion:ReadOnlyWorkspaces`: workspaces in which the tools that create, append or change are refused before Notion is
+  called. `list_workspaces` shows which ones are read-only, and a name that is not a configured workspace stops the
+  startup, so a typo cannot leave a workspace writable.
+
 ### Security
 
 - Inline Markdown parsing has a match time limit and a total time budget per conversion, falls back to plain text

@@ -57,6 +57,14 @@ public sealed partial class RepositoryConventionsTests
     }
 
     [Fact]
+    public void Every_other_notion_setting_is_in_the_readme_settings_table()
+    {
+        var others = typeof(NotionOptions).GetProperties().Select(p => p.Name).Except([nameof(NotionOptions.Workspaces)]);
+
+        Assert.All(others, name => Assert.Contains($"| `Notion:{name}` |", Readme, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Appsettings_declares_every_non_secret_server_option_with_its_default()
     {
         var path = Path.Combine(_root, "src", "NotionMultiMcp", "appsettings.json");
@@ -91,6 +99,20 @@ public sealed partial class RepositoryConventionsTests
 
         var readme = Readme;
         Assert.All(names, name => Assert.Contains($"| `{name}` |", readme, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Every_tool_that_may_change_something_takes_a_workspace_so_the_read_only_setting_can_refuse_it()
+    {
+        using var factory = new McpAppFactory();
+        var client = new McpTestClient(factory);
+        var token = (await client.SignInAsync()).Tokens.AccessToken;
+
+        var response = await client.RpcAsync(token, McpTestClient.Request(1, "tools/list"));
+        var writers = ((JsonArray)response["result"]!["tools"]!).Where(t => !(bool)t!["annotations"]!["readOnlyHint"]!).ToList();
+
+        Assert.NotEmpty(writers);
+        Assert.All(writers, t => Assert.NotNull(t!["inputSchema"]!["properties"]!["workspace"]));
     }
 
     [Fact]

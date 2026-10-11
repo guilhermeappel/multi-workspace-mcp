@@ -16,7 +16,8 @@ internal sealed class ReadTools(ToolContext context, DataSourceResolver dataSour
             {
                 var me = await context.Notion.GetAsync(context.Workspaces.TokenFor(name), "users/me", cancellationToken);
                 var notionWorkspace = J.Str(me["bot"]?["workspace_name"]) ?? "?";
-                sb.AppendLine($"- {name}: Notion workspace \"{notionWorkspace}\" (integration \"{J.Str(me["name"])}\")");
+                var access = context.Workspaces.IsReadOnly(name) ? " [read-only on this server]" : "";
+                sb.AppendLine($"- {name}{access}: Notion workspace \"{notionWorkspace}\" (integration \"{J.Str(me["name"])}\")");
             }
             catch (NotionApiException e)
             {

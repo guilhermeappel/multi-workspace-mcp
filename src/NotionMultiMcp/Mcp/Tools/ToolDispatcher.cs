@@ -40,6 +40,11 @@ internal sealed partial class ToolDispatcher(ToolCatalog catalog, WorkspaceRegis
     {
         try
         {
+            if (tool is { NeedsWorkspace: true, ReadOnly: false } && workspaces.IsReadOnly(J.Str(args["workspace"])))
+            {
+                throw new ToolException("This workspace is read-only on this server (Notion:ReadOnlyWorkspaces), so '" + tool.Name + "' is not allowed on it. Reading and searching still work.");
+            }
+
             return new ToolOutcome(await tool.Handler(args, cancellationToken), IsError: false);
         }
         catch (ToolException e)

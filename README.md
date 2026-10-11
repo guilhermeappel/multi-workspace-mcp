@@ -45,7 +45,8 @@ connector, choosing the right one from the conversation.
 
 ## Features
 
-- **Many workspaces, one connector.** Add as many as you like with `Notion:Workspaces:<name>`.
+- **Many workspaces, one connector.** Add as many as you like with `Notion:Workspaces:<name>`, and mark any of them
+  read-only with `Notion:ReadOnlyWorkspaces`.
 - **Eight tools** to search, read, query, create and update pages and databases, with page content exchanged as
   Markdown. See [Tools](#tools).
 - **Built-in OAuth 2.1 for one user:** authorization code with PKCE S256, dynamic client registration and a
@@ -215,6 +216,7 @@ In an environment variable, write `:` as `__`: `Server:SigningKey` is `Server__S
 | Key | Required | Description |
 |---|---|---|
 | `Notion:Workspaces:<name>` | yes (at least 1) | Integration token (a secret); `<name>` becomes the workspace name |
+| `Notion:ReadOnlyWorkspaces` | no | One value with workspace names separated by commas (for example `work,client-x`), not a list. The tools that create, append or change are refused in them. Every name must be a configured workspace, so a typo stops the startup |
 | `Server:AuthPassword` | yes (unless `Server:AuthDisabled`) | Secret. Password asked on the authorization page (at least 16 characters, make it long and random) |
 | `Server:SigningKey` | yes (unless `Server:AuthDisabled`) | Secret. 32+ random bytes as hex or base64 (for example `openssl rand -hex 32`; a phrase is rejected); signs the tokens |
 | `Server:PublicBaseUrl` | in production | `https://<fqdn>` without a trailing slash; defaults to `http://localhost:8080` |
