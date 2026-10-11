@@ -226,7 +226,8 @@ text.
 ## CI/CD
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `main`. On pull requests it checks the branch
-name; it always checks the code style, builds and tests; on `main` it publishes the image
+name; it always checks the code style, builds and tests, and builds the image (without publishing it) so a Dockerfile
+error fails the pull request; on `main` it publishes the image
 `ghcr.io/<owner>/multi-workspace-mcp` with the tags `latest` and `sha-xxxxxxx`. Deployment is manual:
 `az containerapp update -n notion-mcp -g rg-notion-mcp --image ghcr.io/<owner>/multi-workspace-mcp:sha-xxxxxxx`.
 
