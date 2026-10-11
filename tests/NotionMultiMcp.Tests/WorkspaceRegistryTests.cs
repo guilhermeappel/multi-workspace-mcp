@@ -18,6 +18,18 @@ public sealed class WorkspaceRegistryTests
         return WorkspaceRegistry.From(options);
     }
 
+    private static WorkspaceRegistry LoadReadOnly(string? readOnly, params (string Name, string? Token)[] workspaces)
+    {
+        var options = new NotionOptions { Workspaces = workspaces.ToDictionary(w => w.Name, w => w.Token), ReadOnlyWorkspaces = readOnly };
+        var result = new NotionOptionsValidator().Validate(null, options);
+        if (result.Failed)
+        {
+            throw new InvalidOperationException(result.FailureMessage);
+        }
+
+        return WorkspaceRegistry.From(options);
+    }
+
     [Fact]
     public void Each_configured_entry_becomes_a_lowercase_workspace()
     {
@@ -101,6 +113,66 @@ public sealed class WorkspaceRegistryTests
         var error = Assert.Throws<ToolException>(() => registry.TokenFor(null));
 
         Assert.Contains("personal, work", error.Message);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ,  ")]
+    public void No_workspace_is_read_only_by_default(string? readOnly)
+    {
+        var registry = LoadReadOnly(readOnly, ("work", "ntn_w"), ("personal", "ntn_p"));
+
+        Assert.False(registry.IsReadOnly("work"));
+        Assert.False(registry.IsReadOnly("personal"));
+    }
+
+    [Fact]
+    public void A_listed_workspace_is_read_only_and_the_others_are_not()
+    {
+        var registry = LoadReadOnly(" Work , client_x ", ("work", "ntn_w"), ("personal", "ntn_p"), ("client-x", "ntn_c"));
+
+        Assert.True(registry.IsReadOnly("work"));
+        Assert.True(registry.IsReadOnly("  WORK "));
+        Assert.True(registry.IsReadOnly("client-x"));
+        Assert.False(registry.IsReadOnly("personal"));
+    }
+
+    [Fact]
+    public void With_a_single_workspace_an_omitted_name_means_that_workspace()
+    {
+        var registry = LoadReadOnly("work", ("work", "ntn_w"));
+
+        Assert.True(registry.IsReadOnly(null));
+        Assert.True(registry.IsReadOnly("  "));
+    }
+
+    [Fact]
+    public void An_omitted_name_with_several_workspaces_is_not_read_only_and_fails_later_in_token_lookup()
+    {
+        var registry = LoadReadOnly("work", ("work", "ntn_w"), ("personal", "ntn_p"));
+
+        Assert.False(registry.IsReadOnly(null));
+        Assert.Throws<ToolException>(() => registry.TokenFor(null));
+    }
+
+    [Fact]
+    public void An_unknown_name_is_not_read_only()
+    {
+        var registry = LoadReadOnly("work", ("work", "ntn_w"));
+
+        Assert.False(registry.IsReadOnly("clients"));
+    }
+
+    [Theory]
+    [InlineData("wrok")]
+    [InlineData("work,persnal")]
+    public void A_read_only_name_that_is_not_a_configured_workspace_stops_the_startup(string readOnly)
+    {
+        var error = Assert.Throws<InvalidOperationException>(() => LoadReadOnly(readOnly, ("work", "ntn_w"), ("personal", "ntn_p")));
+
+        Assert.Contains("Notion:ReadOnlyWorkspaces", error.Message);
+        Assert.Contains("not a configured workspace", error.Message);
     }
 
     [Fact]

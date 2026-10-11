@@ -12,10 +12,12 @@ namespace NotionMultiMcp.Notion;
 internal sealed partial class WorkspaceRegistry
 {
     private readonly FrozenDictionary<string, string> _tokens;
+    private readonly FrozenSet<string> _readOnly;
 
-    private WorkspaceRegistry(Dictionary<string, string> tokens)
+    private WorkspaceRegistry(Dictionary<string, string> tokens, IEnumerable<string> readOnly)
     {
         _tokens = tokens.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+        _readOnly = readOnly.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
         Names = tokens.Keys.Order(StringComparer.Ordinal).ToArray();
     }
 
@@ -26,6 +28,14 @@ internal sealed partial class WorkspaceRegistry
 
     public static bool IsValidName(string normalizedName) => ValidName().IsMatch(normalizedName);
 
+    /// <summary>The normalized names in a comma separated list such as <c>Notion:ReadOnlyWorkspaces</c>.</summary>
+    public static IReadOnlyList<string> ParseNames(string? list) =>
+        (list ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(NormalizeName)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
     /// <summary>Builds the registry from options that already passed <see cref="NotionOptionsValidator"/>.</summary>
     public static WorkspaceRegistry From(NotionOptions options)
     {
@@ -35,7 +45,22 @@ internal sealed partial class WorkspaceRegistry
             tokens[NormalizeName(key)] = token!.Trim();
         }
 
-        return new WorkspaceRegistry(tokens);
+        return new WorkspaceRegistry(tokens, ParseNames(options.ReadOnlyWorkspaces));
+    }
+
+    /// <summary>
+    /// Whether the tools that change something are refused for the workspace a call names. An omitted name means the
+    /// only configured workspace, as in <see cref="TokenFor"/>; an unknown name is not read-only here and is rejected
+    /// later with the list of valid names.
+    /// </summary>
+    public bool IsReadOnly(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return _tokens.Count == 1 && _readOnly.Contains(Names[0]);
+        }
+
+        return _readOnly.Contains(NormalizeName(name));
     }
 
     public string TokenFor(string? name)

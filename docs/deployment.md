@@ -179,6 +179,9 @@ az containerapp logs show -n $app -g $rg --type console --follow
 $workspaceId = az monitor log-analytics workspace show -g $rg -n law-notion-mcp --query customerId -o tsv
 az monitor log-analytics query -w $workspaceId --analytics-query "ContainerAppConsoleLogs_CL | where TimeGenerated > ago(7d) | where Log_s contains 'rejected' | project TimeGenerated, Log_s | order by TimeGenerated desc"
 
+# Make a workspace read-only on this server (every name must be a configured workspace)
+az containerapp update -n $app -g $rg --set-env-vars Notion__ReadOnlyWorkspaces=work
+
 # Add a third workspace
 az containerapp secret set -n $app -g $rg --secrets notion-client=ntn_...
 az containerapp update -n $app -g $rg --set-env-vars Notion__Workspaces__client=secretref:notion-client
