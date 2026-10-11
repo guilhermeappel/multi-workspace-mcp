@@ -16,6 +16,7 @@ internal sealed partial class McpEndpoint(
 {
     /// <summary>Largest request body accepted anywhere (applied to Kestrel): room for big Markdown pages.</summary>
     internal const int MaxBodyBytes = 2 * 1024 * 1024;
+    internal const int MaxBatchItems = 20;
 
     private const string McpPath = "/mcp";
     private const int MaxLoggedOriginLength = 100;
@@ -62,6 +63,8 @@ internal sealed partial class McpEndpoint(
 
         switch (parsed.Node)
         {
+            case JsonArray { Count: > MaxBatchItems }:
+                return JsonRpcResult(JsonRpc.Error(null, JsonRpcErrorCode.InvalidRequest, $"Batch too large: at most {MaxBatchItems} messages."), StatusCodes.Status400BadRequest);
             case JsonArray { Count: > 0 } batch:
                 return await HandleBatchAsync(batch, ctx.RequestAborted);
             case JsonObject single:

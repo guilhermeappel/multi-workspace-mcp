@@ -13,6 +13,13 @@ internal static partial class MarkdownToBlocks
     // The API accepts at most 2 levels of children per request.
     private const int MaxNesting = 2;
 
+    // Inline parsing can backtrack quadratically on adversarial text, and each line gets its own time limit. Capping the
+    // whole input keeps the worst case to a few seconds. Real documents are far smaller.
+    internal const int MaxMarkdownLength = 100_000;
+
+    // The most time one conversion may spend on inline patterns before the rest of the text stays plain.
+    private static readonly TimeSpan _inlineParseBudget = TimeSpan.FromSeconds(1);
+
     private static readonly FrozenDictionary<string, string> _languageAliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["cs"] = "c#",
@@ -64,6 +71,13 @@ internal static partial class MarkdownToBlocks
 
     public static List<JsonObject> Convert(string markdown)
     {
+        if (markdown.Length > MaxMarkdownLength)
+        {
+            throw new ToolException($"The content is {markdown.Length:N0} characters and the limit is {MaxMarkdownLength:N0}. Send long content in several append_content calls.");
+        }
+
+        using var budgetScope = RichText.BeginInlineBudget(_inlineParseBudget);
+
         var lines = markdown.Replace("\r\n", "\n").Split('\n');
         var blocks = new List<JsonObject>();
         var listStack = new List<(int Indent, JsonObject Block)>();

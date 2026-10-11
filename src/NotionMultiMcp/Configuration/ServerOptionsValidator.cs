@@ -22,9 +22,9 @@ internal sealed class ServerOptionsValidator(IHostEnvironment environment) : IVa
 
         // Without auth there is nothing to protect, so a throwaway key is generated and none is required.
         var keyIsOptional = authDisabled && string.IsNullOrWhiteSpace(options.SigningKey);
-        if (!keyIsOptional && !SigningKeyFormat.IsStrong(SigningKeyFormat.Parse(options.SigningKey)))
+        if (!keyIsOptional && !(SigningKeyFormat.IsStrong(SigningKeyFormat.Parse(options.SigningKey)) && SigningKeyFormat.LooksRandom(options.SigningKey)))
         {
-            failures.Add("Server:SigningKey must have at least 32 random bytes (64 hex characters or base64).");
+            failures.Add("Server:SigningKey must be 32 random bytes as 64 hex characters or base64, for example the output of 'openssl rand -hex 32'. A value that uses only a few different characters, such as a phrase, is rejected.");
         }
 
         if (!authDisabled && (string.IsNullOrWhiteSpace(options.AuthPassword) || options.AuthPassword.Length < MinPasswordLength))

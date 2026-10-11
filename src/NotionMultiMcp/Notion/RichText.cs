@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -10,6 +11,13 @@ internal static partial class RichText
     private const string EquationType = "equation";
     private const string MentionType = "mention";
     private const int MaxTextLength = 2000; // Notion limit per text object
+
+    // The inline patterns can backtrack quadratically on adversarial text such as a long run of "**a ". Legitimate
+    // text matches in microseconds, so these limits never affect it.
+    private const int InlineMatchTimeoutMilliseconds = 100;
+
+    [ThreadStatic]
+    private static InlineBudget? _budget;
 
     public static string Plain(JsonNode? richText)
     {
@@ -85,6 +93,43 @@ internal static partial class RichText
     /// <summary>Inline Markdown (**bold**, *italic*, `code`, ~~strikethrough~~, [link](url)) -> rich_text.</summary>
     public static JsonArray FromMarkdown(string text)
     {
+        var budget = _budget;
+        if (budget is { IsExhausted: true })
+        {
+            return FromPlain(text);
+        }
+
+        var start = Stopwatch.GetTimestamp();
+        try
+        {
+            return ParseInline(text);
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            // Text that makes the patterns backtrack for that long is not real Markdown: keep it as it is, and stop
+            // parsing the rest of the document, which would otherwise cost the same time again for every paragraph.
+            budget?.Exhaust();
+            return FromPlain(text);
+        }
+        finally
+        {
+            budget?.Spend(Stopwatch.GetElapsedTime(start));
+        }
+    }
+
+    /// <summary>
+    /// Limits the total time <see cref="FromMarkdown"/> may spend on inline patterns on this thread until the returned
+    /// scope is disposed. Once it is used up, the remaining text is kept as plain text.
+    /// </summary>
+    public static IDisposable BeginInlineBudget(TimeSpan limit)
+    {
+        var previous = _budget;
+        _budget = new InlineBudget(limit);
+        return new BudgetScope(previous);
+    }
+
+    private static JsonArray ParseInline(string text)
+    {
         var array = new JsonArray();
         var position = 0;
         foreach (Match match in InlinePattern().Matches(text))
@@ -153,6 +198,23 @@ internal static partial class RichText
         }
     }
 
+    private sealed class InlineBudget(TimeSpan limit)
+    {
+        private TimeSpan _spent;
+        private bool _exhausted;
+
+        public bool IsExhausted => _exhausted || _spent >= limit;
+
+        public void Spend(TimeSpan elapsed) => _spent += elapsed;
+
+        public void Exhaust() => _exhausted = true;
+    }
+
+    private sealed class BudgetScope(InlineBudget? previous) : IDisposable
+    {
+        public void Dispose() => _budget = previous;
+    }
+
     private readonly record struct Style(bool Bold = false, bool Italic = false, bool Strike = false, bool Code = false);
 
     [GeneratedRegex(
@@ -160,6 +222,8 @@ internal static partial class RichText
         @"|(?<bold>\*\*(?=\S).+?(?<=\S)\*\*)" +
         @"|(?<strike>~~(?=\S).+?(?<=\S)~~)" +
         @"|(?<link>\[(?<ltext>[^\]\n]+)\]\((?<lurl>https?://[^)\s]+)\))" +
-        @"|(?<italic>(?<![\w*])\*(?=[^\s*]).+?(?<=[^\s*])\*(?![\w*])|(?<!\w)_(?=\S).+?(?<=\S)_(?!\w))")]
+        @"|(?<italic>(?<![\w*])\*(?=[^\s*]).+?(?<=[^\s*])\*(?![\w*])|(?<!\w)_(?=\S).+?(?<=\S)_(?!\w))",
+        RegexOptions.None,
+        InlineMatchTimeoutMilliseconds)]
     private static partial Regex InlinePattern();
 }

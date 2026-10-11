@@ -129,6 +129,31 @@ public sealed class ServerSettingsTests
         Assert.Contains("Server:SigningKey", error.Message);
     }
 
+    [Fact]
+    public void A_passphrase_that_happens_to_be_valid_base64_is_rejected()
+    {
+        // 44 letters: valid base64 that decodes to 33 bytes, but with the guessing cost of the phrase.
+        var values = Valid();
+        values["Server:SigningKey"] = string.Concat(Enumerable.Repeat("correcthorsebatterystaple", 2))[..44];
+
+        var error = Assert.Throws<InvalidOperationException>(() => Load(values));
+
+        Assert.Contains("Server:SigningKey", error.Message);
+        Assert.Contains("a phrase", error.Message);
+    }
+
+    [Theory]
+    [InlineData("Z4z2j693FgTkRset1+klSnTieMaTRhDrsPIqzRj0F1I=")]
+    [InlineData("38d9T2Gz6CfcJIHGo0xy7rDn+LqYxGKa6iKzDEUHlII=")]
+    [InlineData("t3YGP62nMbRNz2WYnI2+uJFG9wEVS4s//CLCNbY5rIQ=")]
+    public void Random_base64_keys_are_accepted(string key)
+    {
+        var values = Valid();
+        values["Server:SigningKey"] = key;
+
+        Assert.Equal(32, Load(values).SigningKey.Length);
+    }
+
     // ------------------------------------------------------------------ password
 
     [Theory]

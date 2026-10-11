@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json.Nodes;
+using NotionMultiMcp.Mcp;
 using NotionMultiMcp.Tests.Support;
 
 namespace NotionMultiMcp.Tests;
@@ -587,6 +588,30 @@ public sealed class McpEndpointTests : IAsyncLifetime, IDisposable
         Assert.Equal(-32600, (int)json["error"]!["code"]!);
         Assert.Null(json["id"]);
     }
+
+    [Fact]
+    public async Task A_batch_over_the_limit_is_a_single_invalid_request_error()
+    {
+        var response = await _client.PostMcpAsync(_token, PingBatch(McpEndpoint.MaxBatchItems + 1));
+        var json = await McpTestClient.ReadJsonAsync(response);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(-32600, (int)json["error"]!["code"]!);
+        Assert.Null(json["id"]);
+    }
+
+    [Fact]
+    public async Task A_batch_at_the_limit_is_still_answered()
+    {
+        var response = await _client.PostMcpAsync(_token, PingBatch(McpEndpoint.MaxBatchItems));
+        var json = await McpTestClient.ReadJsonAsync(response);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(McpEndpoint.MaxBatchItems, json.AsArray().Count);
+    }
+
+    private static string PingBatch(int size) =>
+        "[" + string.Join(",", Enumerable.Range(1, size).Select(id => $$"""{"jsonrpc":"2.0","id":{{id}},"method":"ping"}""")) + "]";
 
     [Theory]
     [InlineData("""{}""")]

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json.Nodes;
 using NotionMultiMcp.Notion;
 
@@ -56,6 +57,20 @@ public class RichTextTests
             """);
 
         Assert.Equal("Hello **world**[ site](https://x.dev)", RichText.ToMarkdown(notion));
+    }
+
+    [Fact]
+    public void FromMarkdown_keeps_text_that_makes_the_patterns_backtrack_as_plain_text()
+    {
+        // Without a match time limit this input takes seconds and grows quadratically with its length.
+        var text = string.Concat(Enumerable.Repeat("**a ", 50_000));
+
+        var stopwatch = Stopwatch.StartNew();
+        var items = RichText.FromMarkdown(text);
+        stopwatch.Stop();
+
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(5), $"Took {stopwatch.Elapsed}.");
+        Assert.Equal(text, string.Concat(items.Select(Content)));
     }
 
     private static string Content(JsonNode? item) => item!["text"]!["content"]!.GetValue<string>();

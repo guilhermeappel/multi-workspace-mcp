@@ -216,7 +216,7 @@ In an environment variable, write `:` as `__`: `Server:SigningKey` is `Server__S
 |---|---|---|
 | `Notion:Workspaces:<name>` | yes (at least 1) | Integration token (a secret); `<name>` becomes the workspace name |
 | `Server:AuthPassword` | yes (unless `Server:AuthDisabled`) | Secret. Password asked on the authorization page (at least 16 characters, make it long and random) |
-| `Server:SigningKey` | yes (unless `Server:AuthDisabled`) | Secret. 32+ random bytes as hex or base64; signs the tokens |
+| `Server:SigningKey` | yes (unless `Server:AuthDisabled`) | Secret. 32+ random bytes as hex or base64 (for example `openssl rand -hex 32`; a phrase is rejected); signs the tokens |
 | `Server:PublicBaseUrl` | in production | `https://<fqdn>` without a trailing slash; defaults to `http://localhost:8080` |
 | `Server:TokenGeneration` | no | Positive whole number (default 1); increment it to revoke every issued access and refresh token. An invalid value stops the startup |
 | `Server:ExtraRedirectUris` | no | List of extra OAuth callbacks |
@@ -274,7 +274,8 @@ integrations for workspaces that do not need writes. More in [SECURITY.md](SECUR
 
 ## Limitations
 
-No file uploads, no comments, and no editing of specific blocks (content is only appended to the end).
+No file uploads, no comments, and no editing of specific blocks (content is only appended to the end). The Markdown
+in one call is limited to 100,000 characters; send longer content in several `append_content` calls.
 Tables with more than 100 rows and lists with more than 100 sub-items inside a single block exceed the
 Notion API limit. Uses Notion API version `2026-03-11`.
 
