@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NotionMultiMcp/NotionMultiMcp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NotionMultiMcp.Tests/NotionMultiMcp.Tests.csproj" />
+  </Folder>
+</Solution>

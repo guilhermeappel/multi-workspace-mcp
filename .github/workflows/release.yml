@@ -1,0 +1,103 @@
+name: release
+
+# Pushing a tag such as v1.2.3 tests the code, publishes the image with the version tags and creates the
+# GitHub release. Deployment stays manual (see docs/deployment.md).
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+# Third-party actions are pinned to a commit SHA (the tag is in the comment); Dependabot keeps them current.
+jobs:
+  verify:
+    name: Build & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore NotionMultiMcp.slnx
+
+      - name: Check code style
+        run: dotnet format NotionMultiMcp.slnx --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build NotionMultiMcp.slnx --no-restore -c Release
+
+      - name: Test
+        run: dotnet test NotionMultiMcp.slnx --no-build -c Release
+
+  publish:
+    name: Image and GitHub release
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ghcr.io/<user>/<repo> in lowercase. v1.2.3 becomes the tags 1.2.3 and 1.2; a pre-release tag such as
+      # v1.2.3-rc.1 only gets its own version tag.
+      - id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          flags=(--generate-notes --verify-tag)
+          if [[ "$TAG" == *-* ]]; then
+            flags+=(--prerelease)
+          fi
+          gh release create "$TAG" "${flags[@]}" --repo "$GITHUB_REPOSITORY"
+
+      - name: Summary
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          {
+            echo "### Release $TAG"
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+            echo "Deploy: \`az containerapp update -n notion-mcp -g rg-notion-mcp --image ghcr.io/${GITHUB_REPOSITORY,,}:${TAG#v}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

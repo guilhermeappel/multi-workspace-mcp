@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>NotionMultiMcp</RootNamespace>
+    <!-- No ICU: smaller image and faster cold start (enables the "chiseled" image). -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <UserSecretsId>notion-multi-mcp-local</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="NotionMultiMcp.Tests" />
+  </ItemGroup>
+
+  <!-- No NuGet packages: only the ASP.NET Core shared framework. -->
+
+</Project>
