@@ -46,7 +46,8 @@ The workflow `.github/workflows/ci.yml` does the following:
 
 - on every pull request and on pushes to `main`: the style check (`dotnet format --verify-no-changes`),
   `dotnet build` and `dotnet test`;
-- on pull requests: checks that the branch name follows `<type>/<kebab-case-description>`;
+- on pull requests: checks that the branch name follows `<type>/<kebab-case-description>` and builds the
+  image without publishing it, so a Dockerfile error shows up before the merge;
 - on a push to `main`, if the tests pass: builds the image and publishes it to
   `ghcr.io/<owner>/multi-workspace-mcp` with the tags `latest` and `sha-xxxxxxx`.
 
