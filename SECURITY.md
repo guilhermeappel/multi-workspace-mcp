@@ -57,5 +57,7 @@ Changing a secret does not restart running replicas. Updating an environment var
 
 - The login throttle and the authorization-code ledger are in memory and per process, so the app must run
   with a single replica (`--max-replicas 1`). See [ADR 0003](docs/adr/0003-single-replica-ephemeral-state.md).
+- The login throttle has a server-wide limit, so someone who attacks from enough networks can keep you from
+  starting a new login for up to 15 minutes at a time. Existing sessions keep working. Nothing is leaked by this.
 - Refresh tokens are stateless, so they cannot be revoked one by one. `Server:TokenGeneration` is the kill switch.
   See [ADR 0001](docs/adr/0001-stateless-hmac-tokens.md).

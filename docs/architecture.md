@@ -98,7 +98,7 @@ sequenceDiagram
     U->>S: GET /authorize
     S-->>U: password page
     U->>S: POST /authorize (password)
-    Note over S: 10 attempts per client address and 60 overall per 15 min
+    Note over S: 10 attempts per client (IPv4 address or IPv6 /64) and 60 overall per 15 min
     S-->>U: 303 to redirect_uri with code and state
     U->>C: callback delivers the code
     C->>S: POST /token (code, code_verifier)

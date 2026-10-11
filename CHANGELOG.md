@@ -7,6 +7,17 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- Inline Markdown parsing has a match time limit and a total time budget per conversion, falls back to plain text
+  when either is hit, and the Markdown of one call is limited to 100,000 characters. A long run of `**a ` made
+  parsing take minutes and could stall the whole app.
+- A client of the login throttle is now an IPv4 address or an IPv6 /64, so one network cannot get a fresh budget per
+  address. The documentation now states that the server-wide limit can keep the owner from starting a new login.
+- `Server:SigningKey` rejects a passphrase that is valid base64; use 32 random bytes (`openssl rand -hex 32`).
+- A JSON-RPC batch is limited to 20 messages.
+- `deploy/azure-setup.ps1` rejects passwords with `%`.
+
 ## [0.1.0] - 2026-10-11
 
 ### Added

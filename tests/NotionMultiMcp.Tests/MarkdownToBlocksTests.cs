@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json.Nodes;
 using NotionMultiMcp.Notion;
 
@@ -5,6 +6,36 @@ namespace NotionMultiMcp.Tests;
 
 public class MarkdownToBlocksTests
 {
+    [Fact]
+    public void Content_over_the_length_limit_is_a_usage_error()
+    {
+        var error = Assert.Throws<ToolException>(() => MarkdownToBlocks.Convert(new string('a', MarkdownToBlocks.MaxMarkdownLength + 1)));
+
+        Assert.Contains("append_content", error.Message);
+    }
+
+    [Fact]
+    public void Many_paragraphs_that_make_the_patterns_backtrack_are_bounded_as_a_whole()
+    {
+        // About the worst case for one paragraph: each takes most of a match time limit if nothing bounds the total.
+        var paragraph = string.Concat(Enumerable.Repeat("**a ", 2_250));
+        var markdown = string.Join("\n\n", Enumerable.Repeat(paragraph, 11));
+
+        var stopwatch = Stopwatch.StartNew();
+        var blocks = MarkdownToBlocks.Convert(markdown);
+        stopwatch.Stop();
+
+        Assert.Equal(11, blocks.Count);
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(4), $"Took {stopwatch.Elapsed}.");
+    }
+
+    [Fact]
+    public void Content_at_the_length_limit_is_converted()
+    {
+        var blocks = MarkdownToBlocks.Convert(new string('a', MarkdownToBlocks.MaxMarkdownLength));
+
+        Assert.NotEmpty(blocks);
+    }
     [Fact]
     public void Converts_headings_paragraphs_and_dividers()
     {

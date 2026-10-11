@@ -10,7 +10,6 @@ internal sealed partial class AuthorizeEndpoints(
     RedirectPolicy redirects,
     ILogger<AuthorizeEndpoints> logger)
 {
-    private const string UnknownClient = "unknown";
 
     private bool UseHsts => settings.PublicBaseUrl.StartsWith(Uri.UriSchemeHttps + "://", StringComparison.Ordinal);
 
@@ -48,7 +47,7 @@ internal sealed partial class AuthorizeEndpoints(
         }
 
         // The attempt is counted before the password is checked, so concurrent guesses cannot slip through.
-        var decision = throttle.TryBegin(ctx.Connection.RemoteIpAddress?.ToString() ?? UnknownClient);
+        var decision = throttle.TryBegin(LoginThrottle.ClientKeyFor(ctx.Connection.RemoteIpAddress));
         if (!decision.IsAllowed)
         {
             LogLoginLocked();

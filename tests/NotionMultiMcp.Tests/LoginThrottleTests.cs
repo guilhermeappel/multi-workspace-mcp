@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.Extensions.Time.Testing;
 using NotionMultiMcp.Auth;
 
@@ -133,6 +134,39 @@ public sealed class LoginThrottleTests
         }
 
         Assert.True(throttle.TryBegin("still-works").IsAllowed);
+    }
+
+    [Theory]
+    [InlineData("203.0.113.7", "203.0.113.7")]
+    [InlineData("::ffff:203.0.113.7", "203.0.113.7")]
+    [InlineData("2001:db8:1:2:aaaa:bbbb:cccc:dddd", "2001:db8:1:2::/64")]
+    [InlineData("2001:db8:1:2::1", "2001:db8:1:2::/64")]
+    [InlineData("fe80::1%5", "fe80::/64")] // a scope id is not part of the network
+    [InlineData("::1", "::/64")]
+    public void A_client_is_an_ipv4_address_or_an_ipv6_slash_64(string address, string expected)
+    {
+        Assert.Equal(expected, LoginThrottle.ClientKeyFor(IPAddress.Parse(address)));
+    }
+
+    [Fact]
+    public void A_missing_address_is_counted_as_one_unknown_client()
+    {
+        Assert.Equal(LoginThrottle.UnknownClient, LoginThrottle.ClientKeyFor(null));
+    }
+
+    [Fact]
+    public void Addresses_in_one_ipv6_network_share_one_budget()
+    {
+        var throttle = CreateThrottle();
+
+        // An attacker who owns a /64 can write to billions of addresses; they must not each get a fresh budget.
+        for (var i = 0; i < LoginThrottle.MaxAttemptsPerClient; i++)
+        {
+            Assert.True(throttle.TryBegin(LoginThrottle.ClientKeyFor(IPAddress.Parse($"2001:db8:1:2::{i + 1:x}"))).IsAllowed);
+        }
+
+        Assert.False(throttle.TryBegin(LoginThrottle.ClientKeyFor(IPAddress.Parse("2001:db8:1:2::ffff"))).IsAllowed);
+        Assert.True(throttle.TryBegin(LoginThrottle.ClientKeyFor(IPAddress.Parse("2001:db8:1:3::1"))).IsAllowed);
     }
 
     [Fact]

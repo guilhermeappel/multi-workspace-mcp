@@ -131,9 +131,9 @@ foreach ($ws in $Workspaces) {
     $envVars += "$envName=secretref:$secretName"
 }
 
-$password = Read-Host "Password to authorize the connector (min. $MinPasswordLength characters, no spaces, quotes or commas)" -MaskInput
+$password = Read-Host "Password to authorize the connector (min. $MinPasswordLength characters, no spaces, quotes, commas or percent signs)" -MaskInput
 if ($password.Length -lt $MinPasswordLength) { throw "The password needs at least $MinPasswordLength characters." }
-if ($password -match '[\s"''`,]') { throw "The password must not contain spaces, quotes, backticks or commas (they break the az --secrets syntax)." }
+if ($password -match '[\s"''`,%]') { throw "The password must not contain spaces, quotes, backticks, commas or percent signs (they break the az --secrets syntax, and cmd.exe expands %NAME%)." }
 
 # 256-bit HMAC key as hex (no '=' so it does not confuse the --secrets parser).
 $signingKey = [Convert]::ToHexString([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))

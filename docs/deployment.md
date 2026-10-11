@@ -81,7 +81,7 @@ Use the `sha-xxxxxxx` tag from the CI job summary rather than `latest`: Containe
 mutable tag again, so `latest` would never update.
 
 The script asks for the Notion tokens and the password (at least 16 characters, with no spaces, quotes,
-backticks or commas) in the terminal, plus the GitHub PAT when `-RegistryUsername` is given. Nothing is
+backticks, commas or percent signs) in the terminal, plus the GitHub PAT when `-RegistryUsername` is given. Nothing is
 written to a file. The values are passed to `az` as arguments, so they are visible to other processes on
 your machine while the script runs. It then:
 
