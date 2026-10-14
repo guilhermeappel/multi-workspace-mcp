@@ -18,7 +18,12 @@ versions in `Directory.Packages.props`.
 
 ## Consequences
 
-- A smaller supply chain around a service that holds credentials, a smaller image and a faster cold start.
+- A smaller supply chain around a service that holds credentials.
+- The image and cold start gains are small. Referencing `ModelContextProtocol.AspNetCore` 2.2.0 (without using it)
+  adds four assemblies, about 2.1 MB, to a 118.5 MB image (uncompressed). On Azure the app was listening about
+  0.3 seconds after the container started, out of about 22 seconds from scheduling the replica, so almost all of the
+  cold start happens before the app's code runs (one measurement each, 2026-10-14; see
+  [Cold start and cost](../deployment.md#cold-start-and-cost)).
 - The project owns protocol conformance. HTTP-level tests and a review against the MCP specification keep that
   honest.
 - Revisit when the server needs resources, prompts, elicitation, progress notifications or SSE: that is the

@@ -123,9 +123,15 @@ to warn you if some setting changes. If you keep a replica running, raise the am
 With `--min-replicas 0` (what the script creates) Azure removes the replica after a few minutes without
 traffic, and the next request starts a new one. On the deployment this section is based on (`eastus`, 0.25 vCPU),
 the replica was scheduled at the first request and the container was running about 23 seconds later. Pulling the
-image took under 3 of those seconds. Your numbers may differ.
+image took under 3 of those seconds. The start of the 0.2.0 revision after a deployment (not a request) shows
+where the rest goes: about 22 seconds from scheduling the replica to a running container, of which pulling the
+image took 2.4 seconds. The container was created about 17 seconds after the pull finished, and the app was
+listening 0.3 seconds after the container started. Almost all of the wait happens before the app's code runs.
+Your numbers may differ.
 
-The connector may give up before that and show "Couldn't connect to the server". Nothing is broken at that
+The connector may give up before that and show "Couldn't connect to the server". The
+[connector docs](https://claude.com/docs/connectors/building/authentication#endpoint-latency) give 10 seconds for the
+OAuth discovery, registration and token endpoints and 30 for a token refresh. Nothing is broken at that
 point: the replica is already starting, so connecting again a minute later works. Tokens are signed, not stored,
 so you are not logged out by a cold start.
 

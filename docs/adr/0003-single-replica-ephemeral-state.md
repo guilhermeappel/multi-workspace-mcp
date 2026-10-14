@@ -10,8 +10,9 @@ an external store.
 
 ## Decision
 
-Both live in memory, per process (`AuthorizationCodeLedger`, `LoginThrottle`), and the app is deployed with
-`--min-replicas 0 --max-replicas 1`.
+Both live in memory, per process (`AuthorizationCodeLedger`, `LoginThrottle`), and the app runs with
+`--max-replicas 1`. The setup script creates it with `--min-replicas 0`; keeping one replica warm
+(`--min-replicas 1`) is also fine, because the limit that matters here is the maximum.
 
 The login throttle gives each client 10 attempts per 15 minutes and the whole server 60. A client is an IPv4 address or
 an IPv6 /64 network, because one subscriber usually controls a whole /64 and single addresses would give an attacker a
