@@ -262,7 +262,7 @@ when a secret leaks.
 | `object_not_found` | The page was not shared with that workspace's integration, or the id belongs to another workspace |
 | `restricted_resource` | The integration does not have the write capability ticked |
 | 403 from `/mcp` in a browser tool (for example the MCP Inspector) | The page's origin is not allowed. Add it to `Server:ExtraAllowedOrigins` |
-| "Couldn't connect" or a slow first call after the server sat idle | Cold start after scaling to zero. It can take 20 seconds or more, which may be longer than the connector waits. Connect again once it is up, or keep one replica running: [Cold start and cost](docs/deployment.md#cold-start-and-cost) |
+| "Couldn't connect" or a slow first call after the server sat idle | Cold start after scaling to zero. It can take 20 seconds or more, which may be longer than the connector waits ([measured here](https://dev.to/guilhermeappel/how-long-does-claudeai-wait-for-your-mcp-server-i-measured-it-3p2c)). Connect again once it is up, or keep one replica running: [Cold start and cost](docs/deployment.md#cold-start-and-cost) |
 | Container does not start | Check the logs (`az containerapp logs show`). Usually a required variable is missing, and the error message says which |
 
 ## Who this is for
