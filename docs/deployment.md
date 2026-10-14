@@ -131,9 +131,11 @@ Your numbers may differ.
 
 The connector may give up before that and show "Couldn't connect to the server". The
 [connector docs](https://claude.com/docs/connectors/building/authentication#endpoint-latency) give 10 seconds for the
-OAuth discovery, registration and token endpoints and 30 for a token refresh. Nothing is broken at that
-point: the replica is already starting, so connecting again a minute later works. Tokens are signed, not stored,
-so you are not logged out by a cold start.
+OAuth discovery, registration and token endpoints and 30 for a token refresh. In a test, Connect gave up
+on a slow MCP handshake after about 10 seconds, and adding a new connector gave up in under 5
+([write-up](https://dev.to/guilhermeappel/how-long-does-claudeai-wait-for-your-mcp-server-i-measured-it-3p2c)).
+Nothing is broken at that point: the replica is already starting, so connecting again a minute later works.
+Tokens are signed, not stored, so you are not logged out by a cold start.
 
 You have two options:
 
