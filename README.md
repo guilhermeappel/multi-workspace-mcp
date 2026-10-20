@@ -47,8 +47,8 @@ connector, choosing the right one from the conversation.
 
 - **Many workspaces, one connector.** Add as many as you like with `Notion:Workspaces:<name>`, and mark any of them
   read-only with `Notion:ReadOnlyWorkspaces`.
-- **Nine tools** to search, read, query, create, update and move pages and databases, with page content exchanged as
-  Markdown. See [Tools](#tools).
+- **Ten tools** to search, read, query, create, update and move pages and databases, and to delete blocks, with
+  page content exchanged as Markdown. See [Tools](#tools).
 - **Built-in OAuth 2.1 for one user:** authorization code with PKCE S256, dynamic client registration and a
   password page, with a login throttle.
 - **Stateless.** Client IDs, codes and tokens are HMAC-signed documents, so there is no database and the
@@ -182,13 +182,14 @@ The script prints the connector URL (`https://<fqdn>/mcp`) to paste in claude.ai
 |---|---|
 | `list_workspaces` | Lists the configured workspaces and the real Notion workspace behind each one |
 | `search` | Searches pages and data sources by title |
-| `fetch_page` | Reads title, properties and content (as Markdown, including nested blocks) |
+| `fetch_page` | Reads title, properties and content (as Markdown, including nested blocks), optionally with the id of each block |
 | `fetch_data_source` | Shows a database schema: properties, types and options |
 | `query_data_source` | Lists rows of a database, with Notion-style filter and sorts |
 | `create_page` | Creates a child page or a database row (content as Markdown) |
 | `append_content` | Appends Markdown to the end of a page |
 | `update_page` | Changes title and properties, or moves a page to the trash and restores it |
 | `move_page` | Moves a page (with its subpages) under another page or into a database |
+| `delete_block` | Moves one block of a page (with the blocks nested in it) to the trash; pages and databases, even nested ones, are refused |
 
 Properties accept simple values such as `{"Status":"Done","Tags":["a","b"],"Due":"2026-10-01"}`. The server
 converts them using each column's type. The raw Notion API format is accepted too.

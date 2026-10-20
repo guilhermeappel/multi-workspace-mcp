@@ -43,7 +43,7 @@ flowchart TB
         handler["McpHandler<br/>initialize, ping,<br/>tools/list, tools/call"]
         catalog["ToolCatalog"]
         dispatcher["ToolDispatcher"]
-        tools["ReadTools, WriteTools<br/>9 tools"]
+        tools["ReadTools, WriteTools<br/>10 tools"]
     end
     subgraph notion["Notion"]
         registry["WorkspaceRegistry<br/>Notion:Workspaces:name"]

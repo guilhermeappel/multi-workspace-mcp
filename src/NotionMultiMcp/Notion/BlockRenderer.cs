@@ -3,8 +3,11 @@ using System.Text.Json.Nodes;
 
 namespace NotionMultiMcp.Notion;
 
-/// <summary>Reads the blocks of a page (recursively) and returns Markdown.</summary>
-internal sealed class BlockRenderer(NotionClient notion, string token)
+/// <summary>
+/// Reads the blocks of a page (recursively) and returns Markdown. With <paramref name="includeBlockIds"/>, each
+/// block is preceded by a comment line with its id, so the model can name one block (for example to delete it).
+/// </summary>
+internal sealed class BlockRenderer(NotionClient notion, string token, bool includeBlockIds)
 {
     private const int MaxDepth = 4;
     private const int BlockBudget = 1500;
@@ -43,6 +46,7 @@ internal sealed class BlockRenderer(NotionClient notion, string token)
 
             if (string.Equals(type, BlockTypes.Table, StringComparison.Ordinal))
             {
+                AppendBlockId(block, indent, sb);
                 await RenderTableAsync(block, indent, sb, cancellationToken);
                 continue;
             }
@@ -50,6 +54,7 @@ internal sealed class BlockRenderer(NotionClient notion, string token)
             var rendered = RenderBlock(block, type, numbered);
             if (rendered.Text is not null)
             {
+                AppendBlockId(block, indent, sb);
                 foreach (var line in rendered.Text.Split('\n'))
                 {
                     sb.Append(indent).AppendLine(line);
@@ -65,6 +70,14 @@ internal sealed class BlockRenderer(NotionClient notion, string token)
             {
                 await RenderChildrenAsync(childId, rendered.Flatten ? depth : depth + 1, sb, cancellationToken);
             }
+        }
+    }
+
+    private void AppendBlockId(JsonObject block, string indent, StringBuilder sb)
+    {
+        if (includeBlockIds && J.Str(block["id"]) is { } id)
+        {
+            sb.Append(indent).AppendLine($"<!-- block_id: {id} -->");
         }
     }
 

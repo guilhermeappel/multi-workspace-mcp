@@ -64,7 +64,8 @@ internal sealed class ToolCatalog
             """
             {"type":"object","required":["page_id"],"properties":{
               "page_id":{"type":"string","description":"Page id or Notion page URL."},
-              "include_content":{"type":"boolean","default":true,"description":"Also return the page body as Markdown."}
+              "include_content":{"type":"boolean","default":true,"description":"Also return the page body as Markdown."},
+              "include_block_ids":{"type":"boolean","default":false,"description":"Put a line <!-- block_id: ... --> before each block shown in the body (layout blocks such as columns are not listed). Use it to find the id to pass to delete_block."}
             }}
             """,
             ReadOnly: true, Destructive: false, Idempotent: true, NeedsWorkspace: true, read.FetchPageAsync);
@@ -150,6 +151,19 @@ internal sealed class ToolCatalog
             }}
             """,
             ReadOnly: false, Destructive: true, Idempotent: true, NeedsWorkspace: true, write.MovePageAsync);
+
+        yield return new Tool(
+            "delete_block", "Delete block",
+            "Move one content block of a page (a paragraph, heading, list item, table, and so on, with the blocks nested " +
+            "inside it) to the trash. A block that holds a subpage or a database is refused. Get the block id from fetch_page with " +
+            "include_block_ids: true, or from a block link (a page URL ending in #<block id>). Pages and databases are " +
+            "refused: to trash a page, use update_page with in_trash: true.",
+            """
+            {"type":"object","required":["block_id"],"properties":{
+              "block_id":{"type":"string","description":"Block id, or a Notion link to the block."}
+            }}
+            """,
+            ReadOnly: false, Destructive: true, Idempotent: true, NeedsWorkspace: true, write.DeleteBlockAsync);
     }
 
     private static JsonObject ToolDefinition(Tool tool, IReadOnlyList<string> workspaceNames)

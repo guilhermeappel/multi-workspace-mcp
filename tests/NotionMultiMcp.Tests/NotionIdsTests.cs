@@ -22,6 +22,18 @@ public class NotionIdsTests
         Assert.Throws<ToolException>(() => NotionIds.Parse("https://www.notion.so/acme/no-id"));
     }
 
+    [Theory]
+    [InlineData("https://www.notion.so/acme/Plan-1a2b3c4d1a2b1a2b1a2b1a2b3c4d5e6f#dddddddddddddddddddddddddddddddd", "dddddddddddddddddddddddddddddddd")]
+    [InlineData("https://www.notion.so/acme/Plan-1a2b3c4d1a2b1a2b1a2b1a2b3c4d5e6f?pvs=4#DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD", "dddddddd-dddd-dddd-dddd-dddddddddddd")]
+    [InlineData("https://www.notion.so/acme/Plan-1a2b3c4d1a2b1a2b1a2b1a2b3c4d5e6f#dddddddddddddddddddddddddddddddd ", "dddddddddddddddddddddddddddddddd")]
+    [InlineData("https://www.notion.so/acme/Plan-1a2b3c4d1a2b1a2b1a2b1a2b3c4d5e6f#dddddddddddddddddddddddddddddddd-x", "1a2b3c4d1a2b1a2b1a2b1a2b3c4d5e6f")]
+    [InlineData("dddddddd-dddd-dddd-dddd-dddddddddddd", "dddddddd-dddd-dddd-dddd-dddddddddddd")]
+    [InlineData("https://www.notion.so/acme/Plan-1a2b3c4d1a2b1a2b1a2b1a2b3c4d5e6f", "1a2b3c4d1a2b1a2b1a2b1a2b3c4d5e6f")]
+    public void Parse_block_takes_the_block_id_from_a_block_link(string input, string expected)
+    {
+        Assert.Equal(expected, NotionIds.ParseBlock(input));
+    }
+
     [Fact]
     public void Compact_makes_the_hyphenated_and_plain_forms_of_an_id_equal()
     {

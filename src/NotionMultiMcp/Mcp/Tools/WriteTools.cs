@@ -7,6 +7,9 @@ namespace NotionMultiMcp.Mcp.Tools;
 internal sealed class WriteTools(ToolContext context, DataSourceResolver dataSources)
 {
     private const int MaxChildrenPerRequest = 100;
+    private const int BlockPreviewLength = 100;
+    private const int MaxNestedBlocksChecked = 1000;
+    private const int ChildrenPageSize = 100;
 
     public async Task<string> CreatePageAsync(JsonObject args, CancellationToken cancellationToken)
     {
@@ -131,6 +134,95 @@ internal sealed class WriteTools(ToolContext context, DataSourceResolver dataSou
         var url = J.Str(page["url"]);
         var title = page["properties"] is null ? "" : $" \"{Properties.PageTitle(page)}\"";
         return $"Moved page{title} under {target.Destination}\nid: {pageId}" + (url is null ? "" : $"\nurl: {url}");
+    }
+
+    public async Task<string> DeleteBlockAsync(JsonObject args, CancellationToken cancellationToken)
+    {
+        var token = context.Token(args);
+        var blockId = NotionIds.ParseBlock(ToolArguments.Required(args, "block_id"));
+
+        // DELETE also trashes pages and databases. Read the block first so this tool stays scoped to content blocks.
+        var block = await context.Notion.GetAsync(token, $"blocks/{blockId}", cancellationToken);
+        var type = J.Str(block["type"]) ?? "unknown";
+        if (string.Equals(type, BlockTypes.ChildPage, StringComparison.Ordinal))
+        {
+            throw new ToolException("This id is a page, not a content block. To trash a page, use update_page with in_trash: true.");
+        }
+
+        if (string.Equals(type, BlockTypes.ChildDatabase, StringComparison.Ordinal))
+        {
+            throw new ToolException("This id is a database, not a content block. Deleting databases is not supported by this server.");
+        }
+
+        var preview = BlockPreview(block, type);
+        if (J.Bool(block["in_trash"]))
+        {
+            return $"The {type} block{preview} is already in the trash\nid: {blockId}";
+        }
+
+        // The nested blocks go to the trash with it, and a toggle or a column can hold a whole subpage or database.
+        if (J.Bool(block["has_children"]))
+        {
+            await RefuseNestedPagesAsync(token, blockId, cancellationToken);
+        }
+
+        await context.Notion.DeleteAsync(token, $"blocks/{blockId}", cancellationToken);
+        return $"Moved the {type} block{preview} to the trash\nid: {blockId}";
+    }
+
+    /// <summary>Walks the blocks nested under a block and refuses the delete if a page or database is among them.</summary>
+    private async Task RefuseNestedPagesAsync(string token, string blockId, CancellationToken cancellationToken)
+    {
+        var pending = new Stack<string>([blockId]);
+        var checkedBlocks = 0;
+        while (pending.TryPop(out var parentId))
+        {
+            var cursor = default(string);
+            do
+            {
+                var path = $"blocks/{parentId}/children?page_size={ChildrenPageSize}"
+                    + (cursor is null ? "" : "&start_cursor=" + Uri.EscapeDataString(cursor));
+                var page = await context.Notion.GetAsync(token, path, cancellationToken);
+                foreach (var child in J.Arr(page["results"]).OfType<JsonObject>())
+                {
+                    var childType = J.Str(child["type"]);
+                    if (string.Equals(childType, BlockTypes.ChildPage, StringComparison.Ordinal)
+                        || string.Equals(childType, BlockTypes.ChildDatabase, StringComparison.Ordinal))
+                    {
+                        var kind = string.Equals(childType, BlockTypes.ChildPage, StringComparison.Ordinal) ? "page" : "database";
+                        throw new ToolException(
+                            $"This block contains the {kind} \"{J.Str(child[childType!]?["title"])}\" (id: {J.Str(child["id"])}), which would go to " +
+                            "the trash with it. Move the page out first with move_page, or delete the other blocks one by one.");
+                    }
+
+                    if (++checkedBlocks > MaxNestedBlocksChecked)
+                    {
+                        throw new ToolException(
+                            $"This block has more than {MaxNestedBlocksChecked} nested blocks, too many to check for subpages. " +
+                            "Delete the blocks inside it in smaller parts.");
+                    }
+
+                    if (J.Bool(child["has_children"]) && J.Str(child["id"]) is { } childId)
+                    {
+                        pending.Push(childId);
+                    }
+                }
+
+                cursor = J.Bool(page["has_more"]) ? J.Str(page["next_cursor"]) : null;
+            }
+            while (cursor is not null);
+        }
+    }
+
+    private static string BlockPreview(JsonObject block, string type)
+    {
+        var text = RichText.Plain(block[type]?["rich_text"]).ReplaceLineEndings(" ").Trim();
+        if (text.Length == 0)
+        {
+            return "";
+        }
+
+        return text.Length <= BlockPreviewLength ? $" \"{text}\"" : $" \"{text[..BlockPreviewLength]}...\"";
     }
 
     /// <summary>The new parent of a moved page: a regular page, or a data source resolved from a database id or URL.</summary>

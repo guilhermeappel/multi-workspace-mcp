@@ -37,11 +37,24 @@ internal static partial class NotionIds
         throw new ToolException($"Could not find a Notion id in '{input}'.");
     }
 
+    /// <summary>
+    /// Like <see cref="Parse"/>, but a link to a block (a page URL ending in #&lt;block id&gt;) gives the block id,
+    /// not the page id, so a block link never resolves to the page that contains it.
+    /// </summary>
+    public static string ParseBlock(string input)
+    {
+        var anchor = BlockAnchor().Match(input.Trim());
+        return anchor.Success ? anchor.Groups[1].Value.ToLowerInvariant() : Parse(input);
+    }
+
     /// <summary>The 32-character form of an id returned by <see cref="Parse"/>, so ids with and without hyphens compare equal.</summary>
     public static string Compact(string id) => id.Replace("-", "", StringComparison.Ordinal);
 
     [GeneratedRegex("[?&]p=([0-9a-fA-F]{32})")]
     private static partial Regex PeekParam();
+
+    [GeneratedRegex("#([0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})$")]
+    private static partial Regex BlockAnchor();
 
     [GeneratedRegex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")]
     private static partial Regex Uuid();

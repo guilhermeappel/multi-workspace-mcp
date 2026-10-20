@@ -189,6 +189,17 @@ public class NotionClientTests
     }
 
     [Fact]
+    public async Task A_delete_is_not_retried_after_a_server_error()
+    {
+        var handler = new StubHttpHandler(_ => Json(HttpStatusCode.InternalServerError, "{}"), _ => Json(HttpStatusCode.OK, "{}"));
+
+        await Assert.ThrowsAsync<NotionApiException>(
+            () => CreateClient(handler).DeleteAsync(Token, "blocks/1", CancellationToken.None).WaitAsync(_testTimeout));
+
+        Assert.Equal(HttpMethod.Delete, handler.Requests.Single().Method);
+    }
+
+    [Fact]
     public async Task A_write_is_retried_after_rate_limiting_because_nothing_was_applied()
     {
         var handler = new StubHttpHandler(_ => Json((HttpStatusCode)429, "{}"), _ => Json(HttpStatusCode.OK, """{"id":"p"}"""));

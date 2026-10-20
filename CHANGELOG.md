@@ -7,6 +7,14 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `delete_block`: moves one content block of a page, with the blocks nested in it, to the trash. It takes a block id or
+  a block link (a page URL ending in `#<block id>`), refuses pages and databases, also when they are nested inside the
+  block, and is refused in read-only workspaces.
+- `fetch_page` takes `include_block_ids`, which writes the id of each block before it, so `delete_block` can be pointed
+  at one.
+
 ## [0.3.0] - 2026-10-20
 
 ### Added

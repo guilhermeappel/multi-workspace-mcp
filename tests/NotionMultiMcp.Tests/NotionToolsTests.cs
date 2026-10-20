@@ -628,6 +628,198 @@ public sealed class NotionToolsTests : IAsyncLifetime, IDisposable
         Assert.Single(_factory.Notion.Requests);
     }
 
+    // ------------------------------------------------------------------ delete_block
+
+    private const string BlockId = "dddddddddddddddddddddddddddddddd";
+
+    [Fact]
+    public async Task Delete_block_reads_the_block_and_then_deletes_it()
+    {
+        Route((method, path) => (method, path) switch
+        {
+            ("GET", _) when path == $"blocks/{BlockId}" => Ok(Paragraph("Old note", BlockId)),
+            ("DELETE", _) when path == $"blocks/{BlockId}" => Ok(Raw($$"""{"object":"block","id":"{{BlockId}}"}""")),
+            _ => null,
+        });
+
+        var text = TextOf(await CallAsync("delete_block", new JsonObject { ["block_id"] = BlockId }));
+
+        Assert.Equal($"Moved the paragraph block \"Old note\" to the trash\nid: {BlockId}", text);
+        Assert.Equal([HttpMethod.Get, HttpMethod.Delete], _factory.Notion.Requests.Select(r => r.Method));
+    }
+
+    [Fact]
+    public async Task Delete_block_takes_the_block_id_from_a_block_link_not_the_page_id()
+    {
+        Route((method, path) => (method, path) switch
+        {
+            ("GET", _) when path == $"blocks/{BlockId}" => Ok(Paragraph("Old note", BlockId)),
+            ("DELETE", _) when path == $"blocks/{BlockId}" => Ok(Raw($$"""{"object":"block","id":"{{BlockId}}"}""")),
+            _ => null,
+        });
+
+        var response = await CallAsync("delete_block", new JsonObject { ["block_id"] = $"https://www.notion.so/acme/Plan-{PageId}#{BlockId}" });
+
+        Assert.False(McpTestClient.ToolIsError(response));
+        Assert.All(_factory.Notion.Requests, request => Assert.Equal($"blocks/{BlockId}", request.Path));
+    }
+
+    [Theory]
+    [InlineData("child_page", "use update_page with in_trash: true")]
+    [InlineData("child_database", "Deleting databases is not supported")]
+    public async Task Delete_block_refuses_pages_and_databases_without_deleting_anything(string type, string message)
+    {
+        Route((method, path) => (method, path) == ("GET", $"blocks/{PageId}")
+            ? Ok(Raw($$$"""{"id":"{{{PageId}}}","type":"{{{type}}}","has_children":false,"{{{type}}}":{"title":"Plan"}}"""))
+            : null);
+
+        var response = await CallAsync("delete_block", new JsonObject { ["block_id"] = PageId });
+
+        Assert.True(McpTestClient.ToolIsError(response));
+        Assert.Contains(message, TextOf(response));
+        Assert.DoesNotContain(_factory.Notion.Requests, request => request.Method == HttpMethod.Delete);
+    }
+
+    [Fact]
+    public async Task Delete_block_refuses_a_block_with_a_subpage_nested_anywhere_inside_it()
+    {
+        var toggle = Paragraph("Archive", BlockId);
+        toggle["has_children"] = true;
+        var bullet = Paragraph("Older", "e1");
+        bullet["has_children"] = true;
+        Route((method, path) => (method, path) switch
+        {
+            ("GET", _) when path == $"blocks/{BlockId}" => Ok(toggle),
+            ("GET", _) when path.StartsWith($"blocks/{BlockId}/children", StringComparison.Ordinal) => Ok(Children(Paragraph("note", "e0"), bullet)),
+            ("GET", _) when path.StartsWith("blocks/e1/children", StringComparison.Ordinal) =>
+                Ok(Children(Raw("""{"id":"p9","type":"child_page","has_children":true,"child_page":{"title":"Plan"}}"""))),
+            _ => null,
+        });
+
+        var response = await CallAsync("delete_block", new JsonObject { ["block_id"] = BlockId });
+
+        Assert.True(McpTestClient.ToolIsError(response));
+        Assert.Contains("contains the page \"Plan\" (id: p9)", TextOf(response));
+        Assert.DoesNotContain(_factory.Notion.Requests, request => request.Method == HttpMethod.Delete);
+    }
+
+    [Fact]
+    public async Task Delete_block_reads_every_page_of_nested_blocks_and_refuses_a_nested_database()
+    {
+        var toggle = Paragraph("Archive", BlockId);
+        toggle["has_children"] = true;
+        var firstPage = Children(Paragraph("note", "e0"));
+        firstPage["has_more"] = true;
+        firstPage["next_cursor"] = "cursor-2";
+        Route((method, path) => (method, path) switch
+        {
+            ("GET", _) when path == $"blocks/{BlockId}" => Ok(toggle),
+            ("GET", _) when path.StartsWith($"blocks/{BlockId}/children", StringComparison.Ordinal) && path.Contains("start_cursor=cursor-2", StringComparison.Ordinal) =>
+                Ok(Children(Raw("""{"id":"db9","type":"child_database","has_children":false,"child_database":{"title":"Tasks"}}"""))),
+            ("GET", _) when path.StartsWith($"blocks/{BlockId}/children", StringComparison.Ordinal) => Ok(firstPage),
+            _ => null,
+        });
+
+        var response = await CallAsync("delete_block", new JsonObject { ["block_id"] = BlockId });
+
+        Assert.True(McpTestClient.ToolIsError(response));
+        Assert.Contains("contains the database \"Tasks\" (id: db9)", TextOf(response));
+        Assert.DoesNotContain(_factory.Notion.Requests, request => request.Method == HttpMethod.Delete);
+    }
+
+    [Fact]
+    public async Task Delete_block_deletes_a_block_whose_nested_blocks_are_only_content()
+    {
+        var toggle = Paragraph("Archive", BlockId);
+        toggle["has_children"] = true;
+        Route((method, path) => (method, path) switch
+        {
+            ("GET", _) when path == $"blocks/{BlockId}" => Ok(toggle),
+            ("GET", _) when path.StartsWith($"blocks/{BlockId}/children", StringComparison.Ordinal) => Ok(Children(Paragraph("note", "e0"))),
+            ("DELETE", _) when path == $"blocks/{BlockId}" => Ok(Raw($$"""{"object":"block","id":"{{BlockId}}"}""")),
+            _ => null,
+        });
+
+        var response = await CallAsync("delete_block", new JsonObject { ["block_id"] = BlockId });
+
+        Assert.False(McpTestClient.ToolIsError(response));
+        Assert.Equal(HttpMethod.Delete, _factory.Notion.Requests.Last().Method);
+    }
+
+    [Fact]
+    public async Task Delete_block_does_not_delete_a_block_that_is_already_in_the_trash()
+    {
+        var trashed = Paragraph("Old note", BlockId);
+        trashed["in_trash"] = true;
+        Route((method, path) => (method, path) == ("GET", $"blocks/{BlockId}") ? Ok(trashed) : null);
+
+        var text = TextOf(await CallAsync("delete_block", new JsonObject { ["block_id"] = BlockId }));
+
+        Assert.Equal($"The paragraph block \"Old note\" is already in the trash\nid: {BlockId}", text);
+        Assert.Single(_factory.Notion.Requests);
+    }
+
+    [Fact]
+    public async Task Delete_block_shortens_a_long_block_text_in_its_answer()
+    {
+        Route((method, path) => (method, path) switch
+        {
+            ("GET", _) when path == $"blocks/{BlockId}" => Ok(Paragraph("  " + new string('a', 150), BlockId)),
+            ("DELETE", _) when path == $"blocks/{BlockId}" => Ok(Raw($$"""{"object":"block","id":"{{BlockId}}"}""")),
+            _ => null,
+        });
+
+        var text = TextOf(await CallAsync("delete_block", new JsonObject { ["block_id"] = BlockId }));
+
+        Assert.StartsWith($"Moved the paragraph block \"{new string('a', 100)}...\" to the trash", text);
+    }
+
+    [Fact]
+    public async Task Delete_block_keeps_its_answer_on_one_line_when_the_block_text_has_line_breaks()
+    {
+        Route((method, path) => (method, path) switch
+        {
+            ("GET", _) when path == $"blocks/{BlockId}" => Ok(Paragraph("first line\nsecond line", BlockId)),
+            ("DELETE", _) when path == $"blocks/{BlockId}" => Ok(Raw($$"""{"object":"block","id":"{{BlockId}}"}""")),
+            _ => null,
+        });
+
+        var text = TextOf(await CallAsync("delete_block", new JsonObject { ["block_id"] = BlockId }));
+
+        Assert.Equal($"Moved the paragraph block \"first line second line\" to the trash\nid: {BlockId}", text);
+    }
+
+    [Fact]
+    public async Task Delete_block_is_not_retried_after_a_server_error()
+    {
+        Route((method, path) => (method, path) switch
+        {
+            ("GET", _) when path == $"blocks/{BlockId}" => Ok(Paragraph("Old note", BlockId)),
+            ("DELETE", _) when path == $"blocks/{BlockId}" => _batchFails(null!),
+            _ => null,
+        });
+
+        var response = await CallAsync("delete_block", new JsonObject { ["block_id"] = BlockId });
+
+        Assert.True(McpTestClient.ToolIsError(response));
+        Assert.Single(_factory.Notion.Requests, request => request.Method == HttpMethod.Delete);
+    }
+
+    [Fact]
+    public async Task Fetch_page_can_show_the_id_of_each_block_for_delete_block()
+    {
+        Route((_, path) => path switch
+        {
+            _ when path == $"pages/{PageId}" => Ok(Page(PageId, "Roadmap")),
+            _ when path.StartsWith($"blocks/{PageId}/children", StringComparison.Ordinal) => Ok(Children(Paragraph("Ship it.", BlockId))),
+            _ => null,
+        });
+
+        var text = TextOf(await CallAsync("fetch_page", new JsonObject { ["page_id"] = PageId, ["include_block_ids"] = true }));
+
+        Assert.Contains($"<!-- block_id: {BlockId} -->\nShip it.", text);
+    }
+
     // ------------------------------------------------------------------ a write that only partly landed
 
     private static readonly Func<HttpRequestMessage, HttpResponseMessage> _batchFails =
