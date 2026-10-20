@@ -7,6 +7,11 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `move_page`: moves a page, with its subpages, under another page or into a database. A database id or URL is
+  resolved to its data source, a page cannot be moved under itself, and the move is refused in read-only workspaces.
+
 ## [0.2.0] - 2026-10-11
 
 ### Added

@@ -37,6 +37,9 @@ internal static partial class NotionIds
         throw new ToolException($"Could not find a Notion id in '{input}'.");
     }
 
+    /// <summary>The 32-character form of an id returned by <see cref="Parse"/>, so ids with and without hyphens compare equal.</summary>
+    public static string Compact(string id) => id.Replace("-", "", StringComparison.Ordinal);
+
     [GeneratedRegex("[?&]p=([0-9a-fA-F]{32})")]
     private static partial Regex PeekParam();
 

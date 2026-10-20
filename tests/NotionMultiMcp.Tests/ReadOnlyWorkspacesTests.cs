@@ -35,16 +35,20 @@ public sealed class ReadOnlyWorkspacesTests : IAsyncLifetime, IDisposable
 
     private static JsonObject TrashArguments() => new() { ["page_id"] = PageId, ["in_trash"] = true };
 
+    private static JsonObject MoveArguments() => new() { ["page_id"] = PageId, ["new_parent_page_id"] = "cccccccccccccccccccccccccccccccc" };
+
     [Theory]
     [InlineData("create_page")]
     [InlineData("append_content")]
     [InlineData("update_page")]
+    [InlineData("move_page")]
     public async Task A_tool_that_changes_something_is_refused_in_a_read_only_workspace_without_calling_notion(string tool)
     {
         var arguments = tool switch
         {
             "create_page" => CreatePageArguments(),
             "append_content" => AppendArguments(),
+            "move_page" => MoveArguments(),
             _ => TrashArguments(),
         };
 

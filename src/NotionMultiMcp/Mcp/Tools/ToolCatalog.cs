@@ -135,6 +135,21 @@ internal sealed class ToolCatalog
             }}
             """,
             ReadOnly: false, Destructive: true, Idempotent: true, NeedsWorkspace: true, write.UpdatePageAsync);
+
+        yield return new Tool(
+            "move_page", "Move page",
+            "Move an existing page, with everything inside it, under another page or into a data source (database). " +
+            "Only regular pages can be moved, not databases. The page keeps its id and url. The integration needs " +
+            "edit access to the page and to the new parent. Moving a page into or out of a database can drop the properties " +
+            "the new parent does not have.",
+            """
+            {"type":"object","required":["page_id"],"properties":{
+              "page_id":{"type":"string","description":"Id or URL of the page to move."},
+              "new_parent_page_id":{"type":"string","description":"Page id or URL to move it under. Use this OR new_parent_data_source_id."},
+              "new_parent_data_source_id":{"type":"string","description":"Data source id, database id, or database URL to move it into as a row. Use this OR new_parent_page_id."}
+            }}
+            """,
+            ReadOnly: false, Destructive: true, Idempotent: true, NeedsWorkspace: true, write.MovePageAsync);
     }
 
     private static JsonObject ToolDefinition(Tool tool, IReadOnlyList<string> workspaceNames)

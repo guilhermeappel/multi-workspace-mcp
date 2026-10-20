@@ -112,6 +112,54 @@ internal sealed class WriteTools(ToolContext context, DataSourceResolver dataSou
         return $"Updated page \"{Properties.PageTitle(page)}\"{status}\nid: {pageId}\nurl: {J.Str(page["url"])}";
     }
 
+    public async Task<string> MovePageAsync(JsonObject args, CancellationToken cancellationToken)
+    {
+        var token = context.Token(args);
+        var pageId = NotionIds.Parse(ToolArguments.Required(args, "page_id"));
+        var newParentPage = J.Str(args["new_parent_page_id"]);
+        var newParentDataSource = J.Str(args["new_parent_data_source_id"]);
+
+        if (string.IsNullOrWhiteSpace(newParentPage) == string.IsNullOrWhiteSpace(newParentDataSource))
+        {
+            throw new ToolException("Pass exactly one of new_parent_page_id or new_parent_data_source_id.");
+        }
+
+        var target = await BuildMoveTargetAsync(token, pageId, newParentPage, newParentDataSource, cancellationToken);
+        var page = await context.Notion.PostAsync(token, $"pages/{pageId}/move", new JsonObject { ["parent"] = target.Parent }, cancellationToken);
+
+        // Notion may answer with a partial page (only object and id), so the title and url are optional.
+        var url = J.Str(page["url"]);
+        var title = page["properties"] is null ? "" : $" \"{Properties.PageTitle(page)}\"";
+        return $"Moved page{title} under {target.Destination}\nid: {pageId}" + (url is null ? "" : $"\nurl: {url}");
+    }
+
+    /// <summary>The new parent of a moved page: a regular page, or a data source resolved from a database id or URL.</summary>
+    private async Task<MoveTarget> BuildMoveTargetAsync(
+        string token,
+        string pageId,
+        string? newParentPage,
+        string? newParentDataSource,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(newParentDataSource))
+        {
+            // The move endpoint takes a data source id, not a database id; resolve it like create_page does.
+            var dataSource = await dataSources.ResolveAsync(token, newParentDataSource, cancellationToken);
+            var dataSourceId = J.Str(dataSource["id"])!;
+            var dataSourceParent = new JsonObject { ["type"] = "data_source_id", ["data_source_id"] = dataSourceId };
+            return new MoveTarget(dataSourceParent, $"data source {dataSourceId}");
+        }
+
+        var parentPageId = NotionIds.Parse(newParentPage!);
+        if (string.Equals(NotionIds.Compact(parentPageId), NotionIds.Compact(pageId), StringComparison.Ordinal))
+        {
+            throw new ToolException("A page cannot be moved under itself. Pass a different new_parent_page_id.");
+        }
+
+        var pageParent = new JsonObject { ["type"] = "page_id", ["page_id"] = parentPageId };
+        return new MoveTarget(pageParent, $"page {parentPageId}");
+    }
+
     /// <summary>Builds the parent and the properties of a new page, for a data source row or a regular page.</summary>
     private async Task<PageTarget> BuildPageTargetAsync(
         string token,
@@ -173,4 +221,6 @@ internal sealed class WriteTools(ToolContext context, DataSourceResolver dataSou
     private sealed record AppendOutcome(int Landed, NotionApiException? Failure);
 
     private sealed record PageTarget(JsonObject Parent, JsonObject Properties);
+
+    private sealed record MoveTarget(JsonObject Parent, string Destination);
 }
