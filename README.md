@@ -47,7 +47,7 @@ connector, choosing the right one from the conversation.
 
 - **Many workspaces, one connector.** Add as many as you like with `Notion:Workspaces:<name>`, and mark any of them
   read-only with `Notion:ReadOnlyWorkspaces`.
-- **Eight tools** to search, read, query, create and update pages and databases, with page content exchanged as
+- **Nine tools** to search, read, query, create, update and move pages and databases, with page content exchanged as
   Markdown. See [Tools](#tools).
 - **Built-in OAuth 2.1 for one user:** authorization code with PKCE S256, dynamic client registration and a
   password page, with a login throttle.
@@ -188,6 +188,7 @@ The script prints the connector URL (`https://<fqdn>/mcp`) to paste in claude.ai
 | `create_page` | Creates a child page or a database row (content as Markdown) |
 | `append_content` | Appends Markdown to the end of a page |
 | `update_page` | Changes title and properties, or moves a page to the trash and restores it |
+| `move_page` | Moves a page (with its subpages) under another page or into a database |
 
 Properties accept simple values such as `{"Status":"Done","Tags":["a","b"],"Due":"2026-10-01"}`. The server
 converts them using each column's type. The raw Notion API format is accepted too.

@@ -54,7 +54,7 @@ src/NotionMultiMcp/
     Tools/                the tools
       ToolCatalog.cs      tool definitions, workspace injection into schemas, instructions
       ToolDispatcher.cs   runs a call: failures to results, output bound, logging
-      ReadTools.cs, WriteTools.cs   the eight handlers
+      ReadTools.cs, WriteTools.cs   the nine handlers
       ToolContext.cs, ToolArguments.cs, ToolText.cs, DataSourceResolver.cs, Tool.cs   shared pieces
   Notion/
     NotionClient.cs       typed HttpClient for the REST API (pinned Notion-Version; retries 429, and 5xx/network

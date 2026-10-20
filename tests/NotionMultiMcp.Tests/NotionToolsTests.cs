@@ -530,6 +530,104 @@ public sealed class NotionToolsTests : IAsyncLifetime, IDisposable
         Assert.Equal(2, _factory.Notion.Requests.Count);
     }
 
+    // ------------------------------------------------------------------ move_page
+
+    private const string NewParentId = "cccccccccccccccccccccccccccccccc";
+
+    [Fact]
+    public async Task Move_page_posts_the_new_parent_page_to_the_move_endpoint()
+    {
+        Route((method, path) => (method, path) == ("POST", $"pages/{PageId}/move") ? Ok(Page(PageId, "Letter v1.1")) : null);
+
+        var text = TextOf(await CallAsync("move_page", new JsonObject
+        {
+            ["page_id"] = $"https://www.notion.so/acme/Letter-{PageId}",
+            ["new_parent_page_id"] = NewParentId,
+        }));
+
+        Assert.Contains($"Moved page \"Letter v1.1\" under page {NewParentId}", text);
+        Assert.Contains($"id: {PageId}", text);
+        Assert.Contains($"url: https://notion.so/{PageId}", text);
+        var request = _factory.Notion.Requests.Single();
+        Assert.Equal(HttpMethod.Post, request.Method);
+        var parent = BodyOf(0)["parent"]!;
+        Assert.Equal("page_id", (string)parent["type"]!);
+        Assert.Equal(NewParentId, (string)parent["page_id"]!);
+    }
+
+    [Fact]
+    public async Task Move_page_resolves_a_database_id_to_its_data_source()
+    {
+        Route((method, path) => (method, path) switch
+        {
+            ("GET", _) when path == $"databases/{DatabaseId}" => Ok(Raw($$"""{"data_sources":[{"id":"{{DataSourceId}}","name":"Tasks"}]}""")),
+            ("GET", _) when path == $"data_sources/{DataSourceId}" => Ok(DataSource(DataSourceId, "Tasks", TaskProperties)),
+            ("POST", _) when path == $"pages/{PageId}/move" => Ok(Raw($$"""{"object":"page","id":"{{PageId}}"}""")),
+            _ => null,
+        });
+
+        var text = TextOf(await CallAsync("move_page", new JsonObject
+        {
+            ["page_id"] = PageId,
+            ["new_parent_data_source_id"] = DatabaseId,
+        }));
+
+        Assert.Equal($"Moved page under data source {DataSourceId}\nid: {PageId}", text);
+        var move = _factory.Notion.Requests.Last();
+        Assert.Equal($"pages/{PageId}/move", move.Path);
+        var parent = JsonNode.Parse(move.Body!)!["parent"]!;
+        Assert.Equal("data_source_id", (string)parent["type"]!);
+        Assert.Equal(DataSourceId, (string)parent["data_source_id"]!);
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(NewParentId, DataSourceId)]
+    public async Task Move_page_needs_exactly_one_new_parent(string? newParentPage, string? newParentDataSource)
+    {
+        var arguments = new JsonObject { ["page_id"] = PageId };
+        if (newParentPage is not null)
+        {
+            arguments["new_parent_page_id"] = newParentPage;
+        }
+
+        if (newParentDataSource is not null)
+        {
+            arguments["new_parent_data_source_id"] = newParentDataSource;
+        }
+
+        var response = await CallAsync("move_page", arguments);
+
+        Assert.True(McpTestClient.ToolIsError(response));
+        Assert.Contains("exactly one of new_parent_page_id or new_parent_data_source_id", TextOf(response));
+        Assert.Empty(_factory.Notion.Requests);
+    }
+
+    [Fact]
+    public async Task Move_page_refuses_to_move_a_page_under_itself()
+    {
+        var response = await CallAsync("move_page", new JsonObject
+        {
+            ["page_id"] = PageId,
+            ["new_parent_page_id"] = "1a2b3c4d-1a2b-1a2b-1a2b-1a2b3c4d5e6f",
+        });
+
+        Assert.True(McpTestClient.ToolIsError(response));
+        Assert.Contains("cannot be moved under itself", TextOf(response));
+        Assert.Empty(_factory.Notion.Requests);
+    }
+
+    [Fact]
+    public async Task Move_page_is_not_retried_after_a_server_error()
+    {
+        Route((method, path) => (method, path) == ("POST", $"pages/{PageId}/move") ? _batchFails(null!) : null);
+
+        var response = await CallAsync("move_page", new JsonObject { ["page_id"] = PageId, ["new_parent_page_id"] = NewParentId });
+
+        Assert.True(McpTestClient.ToolIsError(response));
+        Assert.Single(_factory.Notion.Requests);
+    }
+
     // ------------------------------------------------------------------ a write that only partly landed
 
     private static readonly Func<HttpRequestMessage, HttpResponseMessage> _batchFails =

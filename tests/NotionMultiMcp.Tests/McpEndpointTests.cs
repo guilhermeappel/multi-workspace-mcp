@@ -169,7 +169,7 @@ public sealed class McpEndpointTests : IAsyncLifetime, IDisposable
 
         var names = ((JsonArray)response["result"]!["tools"]!).Select(t => (string)t!["name"]!).ToArray();
         Assert.Equal(
-            ["list_workspaces", "search", "fetch_page", "fetch_data_source", "query_data_source", "create_page", "append_content", "update_page"],
+            ["list_workspaces", "search", "fetch_page", "fetch_data_source", "query_data_source", "create_page", "append_content", "update_page", "move_page"],
             names);
     }
 
@@ -215,6 +215,11 @@ public sealed class McpEndpointTests : IAsyncLifetime, IDisposable
         // update_page overwrites values and can move a page to the trash, but repeating it changes nothing more.
         Assert.True((bool)tools["update_page"]["destructiveHint"]!);
         Assert.True((bool)tools["update_page"]["idempotentHint"]!);
+
+        // move_page can drop properties when a page moves into or out of a database, and repeating it changes nothing more:
+        // Notion rejects a move to the current parent.
+        Assert.True((bool)tools["move_page"]["destructiveHint"]!);
+        Assert.True((bool)tools["move_page"]["idempotentHint"]!);
     }
 
     // ------------------------------------------------------------------ tool calls
