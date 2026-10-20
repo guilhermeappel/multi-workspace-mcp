@@ -7,6 +7,8 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-20
+
 ### Added
 
 - `delete_block`: moves one content block of a page, with the blocks nested in it, to the trash. It takes a block id or
