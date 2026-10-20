@@ -42,6 +42,10 @@ internal sealed class NotionClient(HttpClient http, TimeProvider timeProvider)
     public Task<JsonObject> PatchAsync(string token, string path, JsonNode body, CancellationToken cancellationToken) =>
         SendAsync(token, HttpMethod.Patch, path, body, isRead: false, cancellationToken);
 
+    /// <summary>A DELETE (Notion moves the object to the trash). A write, so never retried after a server error.</summary>
+    public Task<JsonObject> DeleteAsync(string token, string path, CancellationToken cancellationToken) =>
+        SendAsync(token, HttpMethod.Delete, path, null, isRead: false, cancellationToken);
+
     private async Task<JsonObject> SendAsync(
         string token,
         HttpMethod method,

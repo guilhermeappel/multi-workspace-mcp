@@ -108,7 +108,7 @@ internal sealed class ReadTools(ToolContext context, DataSourceResolver dataSour
 
         if (J.BoolOrNull(args["include_content"]) ?? true)
         {
-            var content = await new BlockRenderer(context.Notion, token).RenderAsync(pageId, cancellationToken);
+            var content = await new BlockRenderer(context.Notion, token, J.Bool(args["include_block_ids"])).RenderAsync(pageId, cancellationToken);
             sb.AppendLine().AppendLine("---").AppendLine();
             sb.AppendLine(content.Length > 0 ? content : "(empty page)");
         }

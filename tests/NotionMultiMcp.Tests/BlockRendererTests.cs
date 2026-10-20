@@ -12,12 +12,12 @@ public sealed class BlockRendererTests
 
     private readonly StubHttpHandler _handler = new();
 
-    private BlockRenderer CreateRenderer()
+    private BlockRenderer CreateRenderer(bool includeBlockIds = false)
     {
         var client = new NotionClient(
             new HttpClient(_handler) { BaseAddress = NotionClient.BaseAddress },
             new FakeTimeProvider());
-        return new BlockRenderer(client, Token);
+        return new BlockRenderer(client, Token, includeBlockIds);
     }
 
     // ------------------------------------------------------------------ builders
@@ -85,6 +85,31 @@ public sealed class BlockRendererTests
 
     private Task<string> RenderTopLevelAsync(params JsonObject[] blocks) =>
         RenderAsync(new Dictionary<string, JsonObject[]> { ["root"] = blocks });
+
+    // ------------------------------------------------------------------ block ids
+
+    [Fact]
+    public async Task Block_ids_are_written_before_each_block_only_when_asked()
+    {
+        var pageChildren = new Dictionary<string, JsonObject[]>
+        {
+            ["root"] =
+            [
+                Block("heading_1", Rich("Title"), id: "h1"),
+                Bullet("parent", hasChildren: true, id: "p1"),
+                Raw("""{"id":"t1","type":"table","has_children":true,"table":{"has_column_header":true}}"""),
+            ],
+            ["p1"] = [Bullet("child", id: "c1")],
+            ["t1"] = [Raw("""{"id":"r1","type":"table_row","has_children":false,"table_row":{"cells":[[{"plain_text":"a"}],[{"plain_text":"b"}]]}}""")],
+        };
+        Serve(pageChildren);
+
+        var withIds = Normalize(await CreateRenderer(includeBlockIds: true).RenderAsync("root", CancellationToken.None));
+        var withoutIds = Normalize(await CreateRenderer().RenderAsync("root", CancellationToken.None));
+
+        Assert.Equal("<!-- block_id: h1 -->\n# Title\n\n<!-- block_id: p1 -->\n- parent\n  <!-- block_id: c1 -->\n  - child\n<!-- block_id: t1 -->\n| a | b |\n| --- | --- |", withIds);
+        Assert.Equal("# Title\n\n- parent\n  - child\n| a | b |\n| --- | --- |", withoutIds);
+    }
 
     // ------------------------------------------------------------------ text blocks
 
