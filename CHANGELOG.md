@@ -7,6 +7,8 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-20
+
 ### Added
 
 - `move_page`: moves a page, with its subpages, under another page or into a database. A database id or URL is
