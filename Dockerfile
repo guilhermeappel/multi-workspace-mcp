@@ -1,7 +1,7 @@
 # Base images are pinned by digest (the tag is kept for readability); Dependabot updates both.
 
 # ---------- build ----------
-FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:747cbade5bfd918a175ac32f8f1d931edec2c7d0d5397a3de72eaef1ac1f66d2 AS build
 WORKDIR /src
 # .editorconfig carries the analyzer severities; without it the Recommended set fails the build on rules the project turns off.
 COPY global.json nuget.config .editorconfig Directory.Build.props Directory.Packages.props ./
