@@ -183,13 +183,19 @@ The script prints the connector URL (`https://<fqdn>/mcp`) to paste in claude.ai
 | `list_workspaces` | Lists the configured workspaces and the real Notion workspace behind each one |
 | `search` | Searches pages and data sources by title |
 | `fetch_page` | Reads title, properties and content (as Markdown, including nested blocks), optionally with the id of each block |
-| `fetch_data_source` | Shows a database schema: properties, types and options |
+| `fetch_data_source` | Shows a database schema: properties, types, the options (name and color) of select, multi-select and status columns, and the database icon |
 | `query_data_source` | Lists rows of a database, with Notion-style filter and sorts |
-| `create_page` | Creates a child page or a database row (content as Markdown) |
+| `create_page` | Creates a child page or a database row (content as Markdown), optionally with an `icon` (emoji or image URL) and a `cover` (image URL) |
 | `append_content` | Appends Markdown to the end of a page |
-| `update_page` | Changes title and properties, or moves a page to the trash and restores it |
+| `update_page` | Changes title, properties, `icon` and `cover` (`"none"` removes them), or moves a page to the trash and restores it |
 | `move_page` | Moves a page (with its subpages) under another page or into a database |
 | `delete_block` | Moves one block of a page (with the blocks nested in it) to the trash; pages and databases, even nested ones, are refused |
+| `update_data_source` | Changes the structure of a database: `title`, `icon`, `rename_properties`, `change_property_types`, `set_select_options`, `add_properties`, `remove_properties`. Shows the schema before and after. **`remove_properties` and `set_select_options` delete data** |
+| `create_database` | Creates a database under a page, with its columns (`{"Name":"title","Status":{"select":["Todo","Done"]}}`); returns the database id and the data source id |
+
+`icon` takes an emoji (`⭐`), an image URL starting with `http`, or `"none"` to remove it; `cover` takes an image URL or `"none"`.
+Notion's API cannot rename a select option: `set_select_options` keeps the id and color of options whose name stays, and a
+changed name becomes a new option (the old one is dropped, and the rows that had it lose that value).
 
 Properties accept simple values such as `{"Status":"Done","Tags":["a","b"],"Due":"2026-10-01"}`. The server
 converts them using each column's type. The raw Notion API format is accepted too.
