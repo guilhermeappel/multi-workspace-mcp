@@ -12,6 +12,7 @@ internal static class McpServiceCollectionExtensions
         services.AddSingleton<DataSourceResolver>();
         services.AddSingleton<ReadTools>();
         services.AddSingleton<WriteTools>();
+        services.AddSingleton<SchemaTools>();
         services.AddSingleton<ToolCatalog>();
         services.AddSingleton<ToolDispatcher>();
         services.AddSingleton<McpHandler>();

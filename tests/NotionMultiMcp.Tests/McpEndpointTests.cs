@@ -169,7 +169,7 @@ public sealed class McpEndpointTests : IAsyncLifetime, IDisposable
 
         var names = ((JsonArray)response["result"]!["tools"]!).Select(t => (string)t!["name"]!).ToArray();
         Assert.Equal(
-            ["list_workspaces", "search", "fetch_page", "fetch_data_source", "query_data_source", "create_page", "append_content", "update_page", "move_page", "delete_block"],
+            ["list_workspaces", "search", "fetch_page", "fetch_data_source", "query_data_source", "create_page", "append_content", "update_page", "move_page", "delete_block", "update_data_source", "create_database"],
             names);
     }
 
@@ -224,6 +224,14 @@ public sealed class McpEndpointTests : IAsyncLifetime, IDisposable
         // delete_block removes content from the page; a second call finds the block already in the trash.
         Assert.True((bool)tools["delete_block"]["destructiveHint"]!);
         Assert.True((bool)tools["delete_block"]["idempotentHint"]!);
+
+        // update_data_source can delete columns and options; a second call finds them already gone.
+        Assert.True((bool)tools["update_data_source"]["destructiveHint"]!);
+        Assert.True((bool)tools["update_data_source"]["idempotentHint"]!);
+
+        // create_database only adds, and calling it twice makes two databases.
+        Assert.False((bool)tools["create_database"]["destructiveHint"]!);
+        Assert.False((bool)tools["create_database"]["idempotentHint"]!);
     }
 
     // ------------------------------------------------------------------ tool calls

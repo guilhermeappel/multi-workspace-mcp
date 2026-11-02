@@ -35,6 +35,21 @@ internal sealed class DataSourceResolver(NotionClient notion)
         };
     }
 
+    /// <summary>
+    /// The icon of the database that holds a data source. It is extra information, so a database the integration
+    /// cannot read (or a data source without a database id) simply has none.
+    /// </summary>
+    public async Task<JsonNode?> DatabaseIconAsync(string token, JsonObject dataSource, CancellationToken cancellationToken)
+    {
+        if (J.Str(dataSource["parent"]?["database_id"]) is not { } databaseId)
+        {
+            return null;
+        }
+
+        var database = await TryGetAsync(token, $"databases/{databaseId}", notFoundOnly: false, cancellationToken);
+        return database.Value?["icon"];
+    }
+
     /// <summary>A GET whose failure is returned instead of thrown, so the caller can try another lookup.</summary>
     private async Task<LookupResult> TryGetAsync(string token, string path, bool notFoundOnly, CancellationToken cancellationToken)
     {

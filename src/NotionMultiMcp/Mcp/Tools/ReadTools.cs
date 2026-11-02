@@ -121,36 +121,8 @@ internal sealed class ReadTools(ToolContext context, DataSourceResolver dataSour
         var token = context.Token(args);
         var dataSource = await dataSources.ResolveAsync(token, ToolArguments.Required(args, "data_source_id"), cancellationToken);
 
-        var sb = new StringBuilder();
-        sb.AppendLine($"# {ToolText.Fallback(RichText.Plain(dataSource["title"]))}");
-        sb.AppendLine($"data_source_id: {J.Str(dataSource["id"])}");
-        if (J.Str(dataSource["parent"]?["database_id"]) is { } databaseId)
-        {
-            sb.AppendLine($"database_id: {databaseId}");
-        }
-
-        sb.AppendLine().AppendLine("Properties:");
-        foreach (var (name, property) in dataSource["properties"] as JsonObject ?? [])
-        {
-            var type = J.Str(property?["type"]) ?? "?";
-            var line = $"- {name} ({type})";
-            if (type is PropertyTypes.Select or PropertyTypes.MultiSelect or PropertyTypes.Status)
-            {
-                var options = J.Arr(property?[type]?["options"]).Select(o => J.Str(o?["name"])).ToList();
-                if (options.Count > 0)
-                {
-                    line += ": " + string.Join(" | ", options);
-                }
-            }
-            else if (string.Equals(type, PropertyTypes.Relation, StringComparison.Ordinal) && J.Str(property?["relation"]?["data_source_id"]) is { } related)
-            {
-                line += $" → data source {related}";
-            }
-
-            sb.AppendLine(line);
-        }
-
-        return sb.ToString();
+        var icon = await dataSources.DatabaseIconAsync(token, dataSource, cancellationToken);
+        return DataSourceText.Describe(dataSource, icon);
     }
 
     public async Task<string> QueryDataSourceAsync(JsonObject args, CancellationToken cancellationToken)
