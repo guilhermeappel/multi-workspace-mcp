@@ -235,3 +235,17 @@ Supply chain: third-party actions are pinned to a commit SHA (the tag stays in a
 its base images by digest, `nuget.config` maps every package to nuget.org, and Dependabot (`.github/dependabot.yml`)
 keeps actions, packages and base images current. When you add a workflow step, pin its action by SHA and keep
 `permissions` minimal (`packages: write` only on the publish job).
+
+## Integration test against a real workspace
+
+`NotionIntegrationTests` runs the icon, `update_data_source` and `create_database` tools against real Notion. It is
+skipped unless all of these are set:
+
+```bash
+export NOTION_INTEGRATION_TESTS=1
+export NOTION_INTEGRATION_TOKEN=ntn_...            # integration token of the personal workspace
+export NOTION_INTEGRATION_PARENT_PAGE_ID=<page id> # a page shared with that integration
+dotnet test NotionMultiMcp.slnx --filter NotionIntegrationTests
+```
+
+The test creates its own page under that parent, works only inside it and moves it to the trash at the end.

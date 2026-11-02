@@ -7,6 +7,20 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-02
+
+### Added
+
+- `create_page` and `update_page` take `icon` (an emoji, an image URL starting with `http`, or `"none"` to remove it)
+  and `cover` (an image URL, or `"none"`), for loose pages and for database rows.
+- `update_data_source`: renames a database and sets its icon, renames columns, changes a column's type, replaces the
+  options of a select, multi-select or status column (options that stay keep their id and color), and adds or removes
+  columns. It reads the schema first and returns it before and after. `remove_properties` and `set_select_options`
+  delete data, and the tool says so.
+- `create_database`: creates a database under a page, with its columns, and returns the database id and the data source id.
+- `fetch_data_source` shows the color of each select, multi-select and status option, and the icon of the database.
+- An integration test, off by default, that runs the new calls against a real workspace (see `docs/development.md`).
+
 ## [0.4.0] - 2026-10-20
 
 ### Added

@@ -45,6 +45,8 @@ public sealed class ReadOnlyWorkspacesTests : IAsyncLifetime, IDisposable
     [InlineData("update_page")]
     [InlineData("move_page")]
     [InlineData("delete_block")]
+    [InlineData("update_data_source")]
+    [InlineData("create_database")]
     public async Task A_tool_that_changes_something_is_refused_in_a_read_only_workspace_without_calling_notion(string tool)
     {
         var arguments = tool switch
@@ -53,6 +55,8 @@ public sealed class ReadOnlyWorkspacesTests : IAsyncLifetime, IDisposable
             "append_content" => AppendArguments(),
             "move_page" => MoveArguments(),
             "delete_block" => DeleteBlockArguments(),
+            "update_data_source" => new JsonObject { ["data_source_id"] = PageId, ["title"] = "x" },
+            "create_database" => new JsonObject { ["parent_page_id"] = PageId, ["title"] = "x", ["properties"] = new JsonObject { ["Name"] = "title" } },
             _ => TrashArguments(),
         };
 

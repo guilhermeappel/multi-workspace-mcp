@@ -18,6 +18,8 @@ internal sealed class WriteTools(ToolContext context, DataSourceResolver dataSou
         var parentDataSource = J.Str(args["parent_data_source_id"]);
         var title = J.Str(args["title"]);
         var propertiesInput = J.ObjectArg(args["properties"]);
+        var icon = Appearance.Icon(J.Str(args["icon"]));
+        var cover = Appearance.Cover(J.Str(args["cover"]));
 
         if (string.IsNullOrWhiteSpace(parentPage) == string.IsNullOrWhiteSpace(parentDataSource))
         {
@@ -33,6 +35,9 @@ internal sealed class WriteTools(ToolContext context, DataSourceResolver dataSou
             ["properties"] = target.Properties,
             ["children"] = new JsonArray(blocks.Take(MaxChildrenPerRequest).Cast<JsonNode>().ToArray()),
         };
+
+        // A new page has no icon or cover to remove, so "none" sends nothing.
+        Appearance.Apply(body, icon?.Value is null ? null : icon, cover?.Value is null ? null : cover);
 
         var page = await context.Notion.PostAsync(token, "pages", body, cancellationToken);
         var pageId = J.Str(page["id"])!;
@@ -85,13 +90,16 @@ internal sealed class WriteTools(ToolContext context, DataSourceResolver dataSou
         var title = J.Str(args["title"]);
         var propertiesInput = J.ObjectArg(args["properties"]);
         var inTrash = J.BoolOrNull(args["in_trash"]);
+        var icon = Appearance.Icon(J.Str(args["icon"]));
+        var cover = Appearance.Cover(J.Str(args["cover"]));
 
-        if (title is null && propertiesInput is null && inTrash is null)
+        if (title is null && propertiesInput is null && inTrash is null && icon is null && cover is null)
         {
-            throw new ToolException("Nothing to update: pass title, properties and/or in_trash.");
+            throw new ToolException("Nothing to update: pass title, properties, icon, cover and/or in_trash.");
         }
 
         var body = new JsonObject();
+        Appearance.Apply(body, icon, cover);
         if (title is not null || propertiesInput is not null)
         {
             var current = await context.Notion.GetAsync(token, $"pages/{pageId}", cancellationToken);

@@ -12,9 +12,9 @@ internal sealed class ToolCatalog
     private readonly Dictionary<string, Tool> _tools;
     private readonly JsonObject _toolList;
 
-    public ToolCatalog(ReadTools read, WriteTools write, WorkspaceRegistry workspaces)
+    public ToolCatalog(ReadTools read, WriteTools write, SchemaTools schema, WorkspaceRegistry workspaces)
     {
-        var tools = BuildTools(read, write).ToList();
+        var tools = BuildTools(read, write, schema).ToList();
         _tools = tools.ToDictionary(t => t.Name, StringComparer.Ordinal);
         _toolList = new JsonObject { ["tools"] = new JsonArray(tools.Select(t => ToolDefinition(t, workspaces.Names)).ToArray()) };
 
@@ -37,7 +37,7 @@ internal sealed class ToolCatalog
         return found;
     }
 
-    private static IEnumerable<Tool> BuildTools(ReadTools read, WriteTools write)
+    private static IEnumerable<Tool> BuildTools(ReadTools read, WriteTools write, SchemaTools schema)
     {
         yield return new Tool(
             "list_workspaces", "List workspaces",
@@ -101,14 +101,18 @@ internal sealed class ToolCatalog
             "create_page", "Create page",
             "Create a page under a parent page, or a new row in a data source. Content is Markdown " +
             "(headings, lists, to-dos, quotes, code, tables, dividers). For data sources, properties accept simple " +
-            "values keyed by property name, e.g. {\"Status\":\"Todo\",\"Tags\":[\"a\",\"b\"],\"Due\":\"2026-10-01\"}.",
+            "values keyed by property name, e.g. {\"Status\":\"Todo\",\"Tags\":[\"a\",\"b\"],\"Due\":\"2026-10-01\"}. " +
+            "Optional icon (an emoji such as ⭐, or an image URL starting with http) and cover (an image URL); " +
+            "both work for loose pages and for database rows.",
             """
             {"type":"object","properties":{
               "parent_page_id":{"type":"string","description":"Parent page id or URL. Use this OR parent_data_source_id."},
               "parent_data_source_id":{"type":"string","description":"Data source (database) id or URL to add a row to."},
               "title":{"type":"string"},
               "content_markdown":{"type":"string","description":"Page body in Markdown."},
-              "properties":{"type":"object","description":"Only for data source rows. Simple values or raw Notion property objects."}
+              "properties":{"type":"object","description":"Only for data source rows. Simple values or raw Notion property objects."},
+              "icon":{"type":"string","description":"Page icon: an emoji (for example ⭐) or an image URL starting with http."},
+              "cover":{"type":"string","description":"Page cover: an image URL starting with http."}
             }}
             """,
             ReadOnly: false, Destructive: false, Idempotent: false, NeedsWorkspace: true, write.CreatePageAsync);
@@ -126,12 +130,16 @@ internal sealed class ToolCatalog
 
         yield return new Tool(
             "update_page", "Update page",
-            "Update a page's title and/or properties, or move it to / restore it from the trash.",
+            "Update a page's title and/or properties, its icon (icon: an emoji such as ⭐, an image URL starting with http, " +
+            "or \"none\" to remove it) and cover (cover: an image URL, or \"none\" to remove it), or move it to / restore it from the trash. " +
+            "Works for loose pages and for database rows.",
             """
             {"type":"object","required":["page_id"],"properties":{
               "page_id":{"type":"string","description":"Page id or URL."},
               "title":{"type":"string"},
               "properties":{"type":"object","description":"Simple values or raw Notion property objects, keyed by property name."},
+              "icon":{"type":"string","description":"An emoji (for example ⭐), an image URL starting with http, or \"none\" to remove the icon."},
+              "cover":{"type":"string","description":"An image URL starting with http, or \"none\" to remove the cover."},
               "in_trash":{"type":"boolean","description":"true moves the page to the trash; false restores it."}
             }}
             """,
@@ -164,6 +172,44 @@ internal sealed class ToolCatalog
             }}
             """,
             ReadOnly: false, Destructive: true, Idempotent: true, NeedsWorkspace: true, write.DeleteBlockAsync);
+
+        yield return new Tool(
+            "update_data_source", "Update data source",
+            "Change the structure of a database: rename it, set its icon, rename columns, change a column's type, " +
+            "replace the options of a select / multi-select (or status) column, add columns and remove columns. " +
+            "Pass at least one of the optional arguments. Returns the schema before and after. " +
+            "WARNING, DATA IS DELETED: remove_properties deletes the column and all its values in every row, and " +
+            "set_select_options drops every option that is not in the new list, so rows lose that value. Notion's API cannot " +
+            "rename an option: a changed name is a new option and the old one is dropped. Changing a column's type can make " +
+            "existing values unreadable. Call fetch_data_source first to see the current columns and options.",
+            """
+            {"type":"object","required":["data_source_id"],"properties":{
+              "data_source_id":{"type":"string","description":"Data source id, database id, or Notion database URL."},
+              "title":{"type":"string","description":"New name of the database."},
+              "icon":{"type":"string","description":"Database icon: an emoji, an image URL starting with http, or \"none\" to remove it."},
+              "rename_properties":{"type":"object","additionalProperties":{"type":"string"},"description":"{\"Current name\":\"New name\"}."},
+              "change_property_types":{"type":"object","additionalProperties":{"type":"string","enum":["number","rich_text","select","multi_select","date","checkbox","url"]},"description":"{\"Column\":\"number\"}. The title column cannot be converted. Existing values may be lost."},
+              "set_select_options":{"type":"object","additionalProperties":{"type":"array","items":{"type":"string"}},"description":"{\"Column\":[\"Option A\",\"Option B\"]} replaces the options of a select, multi_select or status column. Options with the same name keep their id and color; options left out are DELETED from the rows that have them."},
+              "add_properties":{"type":"object","additionalProperties":{"type":"string","enum":["number","rich_text","select","multi_select","date","checkbox","url"]},"description":"{\"New column\":\"type\"}."},
+              "remove_properties":{"type":"array","items":{"type":"string"},"description":"Names of columns to DELETE, with their values. The title column cannot be removed."}
+            }}
+            """,
+            ReadOnly: false, Destructive: true, Idempotent: true, NeedsWorkspace: true, schema.UpdateDataSourceAsync);
+
+        yield return new Tool(
+            "create_database", "Create database",
+            "Create a new database (with its first data source) as a subpage of a page. properties maps each column name to " +
+            "a type (title, number, rich_text, select, multi_select, date, checkbox, url) or, for select and multi_select, to " +
+            "{\"select\":[\"A\",\"B\"]}; exactly one column must be of type title. Returns the database id and the data source id.",
+            """
+            {"type":"object","required":["parent_page_id","title","properties"],"properties":{
+              "parent_page_id":{"type":"string","description":"Page id or URL to create the database under."},
+              "title":{"type":"string","description":"Name of the database."},
+              "icon":{"type":"string","description":"Database icon: an emoji or an image URL starting with http."},
+              "properties":{"type":"object","description":"{\"Name\":\"title\",\"Status\":{\"select\":[\"Todo\",\"Done\"]},\"Hours\":\"number\"}"}
+            }}
+            """,
+            ReadOnly: false, Destructive: false, Idempotent: false, NeedsWorkspace: true, schema.CreateDatabaseAsync);
     }
 
     private static JsonObject ToolDefinition(Tool tool, IReadOnlyList<string> workspaceNames)
