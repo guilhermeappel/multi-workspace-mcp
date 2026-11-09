@@ -12,7 +12,7 @@ RUN dotnet publish src/NotionMultiMcp/NotionMultiMcp.csproj -c Release -o /app -
 
 # ---------- runtime ----------
 # "chiseled": no shell, non-root user, small image -> fast cold start after scaling to zero.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled@sha256:5165aeeb688df15e869a56a7584bb94bf16a14e0b3ba77b49fcdbe350f6b8020
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled@sha256:f2557fb81b1cfcfdfcde9d3bf247ed60b2cd38f00a88153f61e34737fab8ade7
 WORKDIR /app
 COPY --from=build /app .
 ENV ASPNETCORE_HTTP_PORTS=8080
